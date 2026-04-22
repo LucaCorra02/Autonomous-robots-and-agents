@@ -8,7 +8,8 @@
   title: "Autonomous robots and agents",
   subtitle: "Unimi - Master's Degree in Computer Science",
   authors: (
-    ("Luca Corradini", "your-github-username"),
+    ("Luca Corradini", "https://github.com/LucaCorra02"),
+    ("Giacomo Comitani", "https://github.com/comitanigiacomo")
   ),
   lang: "en", // or "it", IMPORTANT!
 
@@ -45,3 +46,4 @@
 // ============================================================================
 
 
+#include "chapters/rotations.typ"
