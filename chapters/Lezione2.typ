@@ -2,61 +2,51 @@
 
 = Kinematics
 
-A kind of meccanism and linear algebra.
+*Kinematics* study the mechanics of motion without taking into account the forces that produce the motion(focuses on position, velocity, and acceleration, neglects forces).
 
-Robotics are physcal objctes, the cinematics is necessary. He want the robots to move in the world and do some smart stuff. We need to run an algorithm base on the what going on in the enviroment.
+Robots are physical objctes (rigid bodies) that move in 3D spaces, the study of kinematics is necessary. The robots run some algorithms based on what's going on in the enviroment. Our algorithm needs to *represent and deliberate* about motion.
 
-Our algorithm needs to *represent and deliberate* about motion. A robot needs to move, we can see move the movement as a mathematical problem.
+Most important use of kinematics:
+- It can be used for *control the robot*. _for example_, we can move a robot in a specific space by mapping it's position into a 3d vector $x,y,z$ called *pose*.
 
-#note[
-  Kinematics is the studying the mechanics of motion without considering the forces that cause the motion.
-]
-
-It is a branch of mechanics that focuses on describing the motion of objects, including their position, velocity, and acceleration, without taking into account the forces that produce the motion
-
-We need the cinematics to control the robot, for example to move a robot in a specific space. The point in a space are rappresented by a 3d vector $x,y,z$ called pose.
-
-Another use of cinematics is to transpose the coordinates of a drone (local space) to the coordinates of the world (global space)
+- It can be use for *transpose the coordinates* of a drone (local space) to the coordinates that lives in the real world (global space)
 
 #example[
-  For example if we have a drone that is flying in a room, we can use the cinematics to transpose the coordinates of the drone to the coordinates of the room. This is necessary because the drone needs to know where it is in the room in order to move around and avoid obstacles.
+  Suppose that we have a drone flying in a room. We can use the kinematics to transpose the _local_ coordinates of the drone to the _global_ coordinates in the room.
+
+  This is necessary because the drone needs to know it's position in the room, in order to move around and avoid obstacles.
 ]
 
-In robotics we can change the *frame of reference*. This is useful because we can represent the same point in different ways
+In the robotics field the operation of *transposing the coordinates* it's called changing the *frame of reference*. As a conseguence, we can represent the same point in different ways.
 
 #note[
-  Each component of the robot usualy has its own frame of reference (the weels, the sensor). It's a rappresentation that we choose to use.
-  // inserire immagine.
+  Each component of the robot usualy has *its own frame of reference* (the weels, the sensor, ecc..). It's a convection that we choose to use.
+
+  We need to use a specific frame for each components beacase *a sensor return data in its own frame of reference*. We need to transpose the data into the global frame of reference, in order to use it for navigation and control.
 ]
 
-Why do we need to rappresent a component with is own frame of reference? Beacase a sensor returns data in its own frame of reference, and we need to transpose it to the global frame of reference in order to use it for navigation and control.
 
 == Algebra of transformations
 
-=== Frames
+=== Frames (Frame of Reference)
 
-Or frame of reference. We assume two frames:
-- GLobal frame: thw world, we can assume that the world is fixed it doesn't move. We can use it to represent the position of the robot in the world.
+We assume two frames:
+- *Global frame* (the world): we can assume that the *world is fixed*, it doesn't move. We use this frame for represent the position of the robot in the real world;
 
-- Robot frame: the robot is a *rigid body*, a frame is rigidly attached to the robot.
+- *Robot frame*: the robot is a rigid body, a frame is *rigidly attached* to it (it means that the frames move with the robots);
   #warning()[
-    A rigid body is a solid object that does not deform or change shape when subjected to forces. The Eucliadian distance between any two points never changes.
+    A *rigid body* is a solid object that dosen't deform or change shape when subjected to forces. The Eucliadian distance between any two points never changes.
   ]
-  Rigid attach means that the frame move with the robots.
 
-== Vectors and matrix
+=== Vectors and matrix
 
-A vector is a abstract elements wich belongs to a vector space. A vector space is a set of vectors that have some propriety:
-- The sum of two vectors is a vectors itself
-- The results of the sum is also in the vector space
-
-We can see a vector as an object $v$ with two property: a direction and a magnitude:
+We can see a vector as an object $v$ with two property:
 - *Direction*
 - *Magnitude or lenght*
-- $v + u "and" alpha v$ still produce a vector in the same space.
+- Addition $v + u "and scaling" alpha v$ still produce a vector in the same space.
 
 #warning()[
-  This propriety are not dipendent to the frame of reference, they are intrinsic to the vector itself.
+  This property *aren't dipendent to the frame of reference*, they are intrinsic to the vector itself.
 ]
 
 *Coordinatr vector* $p in R^n$ (real number space, a vector is a tuple of $n$ real numbers) is an *ordered* list of numbers representing an abstract vector.
