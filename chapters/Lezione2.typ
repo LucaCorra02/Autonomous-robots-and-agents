@@ -335,53 +335,58 @@ We wirte *$""^A p$* to indicate the vector whose components are the coordinates 
   )
 ]
 
-
-
-=== Conversion
-
 In order to convert the coordinates of a point from one frame to another, we need to use a *transformation*.
 
 #warning()[
-  I can't do this transformation if I don't know the relative position and orientation of the two frames. I need to know how the two frames are related to each other.
+  The transformation can't be performed if we don't know the relative position and orientation of the two frames: we need to *know how the two frames are related to each other*.
 ]
 
-Suppose that $A$ is the world frame, and $B$ is the robot frame. Where:
+Suppose that we have two frames, where: $A$ is the world frame, and $B$ is the robot frame. Where:
 - $A = O -x y z$
 - $B = O' - x'y'z'$
-We want to represent the position of B with respect to A. We need to know:
-- The position of the origin of $B$. I can give the coordinates of $O'$ respect to $A$, $A_O'$.
-- The orientation of $B$ respect to $A$. I can give the coordinates of the *basis vectors* of $B$ respect to $A$:
+
+We want to represent the position of $B$ with respect to $A$. To achive this goal, we need to know:
+- The *position of the origin* of $B$: coordinates of $O'$ respect to $A$, $""^A O'$.
+
+- The *orientation* of $B$ respect to $A$: coordinates of the *basis vectors* of $B$ respect to $A$:
 $
-  (A_x', A_y', A_z')
+  (""^A x', ""^A y', ""^A z')
 $
 
-Imagine we can collide the two frame's origin, so the origin is the same, but the orientation is different. We can use the *end point* concept.
-
-- What are the coordinates of $x'$ in $A$? If we respond to this question, we can draw the x' axes in the $A$ frame.
-
+Imagine that we can *collide the two frame's origin*, so the origin is the same, but the orientation is different. We can use the *end point* concept. The end point of a vector $v$ is the point that we get by starting from the origin and following the direction and magnitude of $v$. If we know the coordinates of the end point of $x'$ in $A$, we can draw the $x'$ axis in the $A$ frame.\
 The dot product is the projection of a vector onto another vector, so we can use it to find the coordinates of $x'$ in $A$:
 $
-  A_x' = [x' dot x, x' dot y, x' dot z]
+  ""^A x' = mat(x' dot x; x' dot y; x' dot z;)
 $
-it works because the $x'$ is a unit vector, so the dot product is equal to the projection of $x'$ onto $A_x$. Where $A_x'$ is also a unitary vector.
+#note()[
+  This formula *works because the $x'$ is a unit vector*, so the dot product is equal to the projection of $x'$ onto $""^A x$. Where $""^A x'$ is also a unitary vector.
+]
 
-We can pack three coordinates of the basis vectors of $B$ respect to $A$ in a matrix, called *rotation matrix*:
+We can pack the three coordinates of the basis vectors of $B$ respect to $A$ in a matrix, called *rotation matrix*:
 $
-  R = [
-    A_x' dot x, A_x' dot y, A_x' dot z,
-    A_y' dot x, A_y' dot y, A_y' dot z,
-    A_z' dot x, A_z' dot y, A_z' dot z
-  ]
+  ""^A_B R = mat(
+    x' dot x, y' dot x, z' dot x;
+    x' dot y, y' dot y, z' dot y;
+    x' dot z, y' dot z, z' dot z;
+  )
 $
 it describes how the frame $B$ is oriented respect to $A$.
 
-*pose* is the joint representation of the position and orientation of a frame. When we say the pose of a robot, we are talking about the position and orientation of the robot in the world, the frame rigidly attached to the robot.
+The *pose* is the joint representation of the *position and orientation of a frame*. When we say _the pose of a robot_, we are talking about the position and orientation of the robot in the frame rigidly attached to the robot.
 
-In the *inverse representation*  we only have swapped the two frame, we ask the inverse of the previous question: what are the coordinates of $x$ axis in $B$?
+In the *inverse representation* we only have swapped the two frame name; is the inverse of the previous question: what are the coordinates of $x$ axis in $B$?
 The rotation matrix is *transpose* of the previous one.
 $
   R = R^T
 $
+
+During this conversion, two case can happen:
+- *No rotation*: the two frame have the same orientation, but different origin.
+- *Rotation*: the two frame have the same origin, but different orientation.
+
+==== No rotation (End point)
+
+
 
 #example[
   If we represent the pose of the frame $B$ in the frame $A$, we can also represent the point $p$ in the frame $A$. In the example there is no rotation between the two frame, so we only need to translate the origin of $B$ respect to $A$.
