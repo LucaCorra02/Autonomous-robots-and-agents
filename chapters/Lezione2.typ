@@ -380,41 +380,154 @@ $
   R = R^T
 $
 
+=== Changing coordinates between frames
+
 During this conversion, two case can happen:
 - *No rotation*: the two frame have the same orientation, but different origin.
 - *Rotation*: the two frame have the same origin, but different orientation.
 
 ==== No rotation (End point)
 
+In this scenario, the two frame have the *same orientation*, but different origin. We can use the *end point* concept to find the coordinates of a point $p$ in the new frame.
 
+Suppose that we have a point $p$ in the frame $B$, we want to find the coordinates of $p$ in the frame $A$ (global frame).
 
-#example[
-  If we represent the pose of the frame $B$ in the frame $A$, we can also represent the point $p$ in the frame $A$. In the example there is no rotation between the two frame, so we only need to translate the origin of $B$ respect to $A$.
+Because there is no rotation, the basis vectors of $B$ are the same as the basis vectors of $A$, so we can only translate the origin of $B$ respect to $A$:
+$
+  ""^A O' = mat(Delta x; Delta y; Delta z;)\
+  Delta x = O'_x - O_x, Delta y = O'_y - O_y, Delta z = O'_z - O_z
+$
+So, the coordinates of $p$ in $A$ are:
+$
+  ""^A p = ""^A O' + ""^B p = mat(Delta x + p_x; Delta y + p_y; Delta z + p_z;)
+$
 
-  the non rotation is a rotation itself, the non rotation is the *identity matrix*: it describes a $0$ degree rotation.
-
-  So the position of point $p$ respect to $A$ is:
-  $
-    A_p = A_O' + B_= //aggiungre
-  $
-  We only sum vectors, it's just a translation.
+#note()[
+  The *non rotation* is a rotation itself. The non rotation is represented by the identity matrix, which is a special case of a rotation matrix, it describes a $0$ degree rotation.
 ]
 
-#example[
-  in this example there is no translation, the two frame have the same origin, but there is a rotation between the two frame.
+==== Rotation
 
-  - We know that $B_p$ are the coordinates of $p$ in the frame $B$, we use the point of view of the robot:
+In this scenario, the two frame have the *same origin*, but different orientation. We can use the *dot product* to find the coordinates of a point $p$ in the new frame $A$ ($O - x y z$).
+
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    let ox = 2
+    let oy = 2
+
+    // Black axes (frame A)
+    line((ox, oy), (ox + 2, oy), stroke: black + 1.5pt) // x axis
+    line((ox, oy), (ox, oy + 2.2), stroke: black + 1.5pt) // z axis
+    line((ox, oy), (ox + 1.5, oy + 1.2), stroke: black + 1.2pt) // y axis
+
+    // Arrow heads for black axes
+    line((ox + 1.95, oy), (ox + 2, oy), stroke: black + 1.5pt)
+    line((ox + 2, oy - 0.08), (ox + 2, oy + 0.08), stroke: black + 1.5pt)
+    line((ox, oy + 2.15), (ox, oy + 2.2), stroke: black + 1.5pt)
+    line((ox - 0.08, oy + 2.2), (ox + 0.08, oy + 2.2), stroke: black + 1.5pt)
+    line((ox + 1.48, oy + 1.17), (ox + 1.5, oy + 1.2), stroke: black + 1.2pt)
+    line((ox + 1.45, oy + 1.15), (ox + 1.52, oy + 1.25), stroke: black + 1.2pt)
+
+    // Red axes (frame B)
+    line((ox, oy), (ox - 1.5, oy + 1.8), stroke: red + 1.5pt) // z' axis
+    line((ox, oy), (ox - 1.8, oy - 1), stroke: red + 1.5pt) // x' axis
+    line((ox, oy), (ox + 1.2, oy - 1.5), stroke: red + 1.5pt) // y' axis
+
+    // Arrow heads for red axes
+    line((ox - 1.48, oy + 1.77), (ox - 1.5, oy + 1.8), stroke: red + 1.5pt)
+    line((ox - 1.53, oy + 1.73), (ox - 1.46, oy + 1.86), stroke: red + 1.5pt)
+    line((ox - 1.77, oy - 0.97), (ox - 1.8, oy - 1), stroke: red + 1.5pt)
+    line((ox - 1.83, oy - 0.95), (ox - 1.77, oy - 1.05), stroke: red + 1.5pt)
+    line((ox + 1.18, oy - 1.48), (ox + 1.2, oy - 1.5), stroke: red + 1.5pt)
+    line((ox + 1.15, oy - 1.53), (ox + 1.25, oy - 1.46), stroke: red + 1.5pt)
+
+    // Gray sphere/object at origin
+    circle((ox, oy), radius: 0.15, fill: gray, stroke: gray)
+
+    // Point p (blue)
+    let px = ox + 2.3
+    let py = oy + 0.4
+    circle((px, py), radius: 0.12, fill: blue, stroke: none)
+
+    // Line from O to p (B_p, blue)
+    line((ox, oy), (px, py), stroke: blue + 1.5pt)
+
+    // Redraw black y axis on top
+    line((ox, oy), (ox + 1.5, oy + 1.2), stroke: black + 1.2pt)
+    line((ox + 1.48, oy + 1.17), (ox + 1.5, oy + 1.2), stroke: black + 1.2pt)
+    line((ox + 1.45, oy + 1.15), (ox + 1.52, oy + 1.25), stroke: black + 1.2pt)
+
+    // Labels for black axes
+    content((ox + 2.2, oy - 0.3), $x$, font: ("New Computer Modern", 10pt))
+    content((ox - 0.3, oy + 2.3), $z$, font: ("New Computer Modern", 10pt))
+    content((ox + 1.6, oy + 1.4), $y$, font: ("New Computer Modern", 10pt))
+
+    // Labels for red axes
+    content((ox - 1.9, oy + 2), $z'$, font: ("New Computer Modern", 10pt), fill: red)
+    content((ox - 2.1, oy - 1.2), $x'$, font: ("New Computer Modern", 10pt), fill: red)
+    content((ox + 1.5, oy - 1.8), $y'$, font: ("New Computer Modern", 10pt), fill: red)
+
+    // Origin label
+    content((ox - 0.35, oy - 0.35), $O, O'$, font: ("New Computer Modern", 9pt))
+
+    // Point p label
+    content((px + 0.25, py), $p$, font: ("New Computer Modern", 10pt), fill: blue)
+
+    // B_p label
+    content((px - 1.0, py + 0.1), $B_p$, font: ("New Computer Modern", 9pt), fill: blue)
+  }),
+  caption: "Rotation between coordinate frames",
+)
+
+In this scenario, we know this information:
+
+- We know that $B_p$ are the coordinates of $p$ in the frame  $mr(B)$ (the point of view of the robot):
   $
-    B_p = [p_x, p_y, p_x] = p_x x^x'
+    ""^B p = mat(p_x; p_y; p_z;) = p_x x' + p_y y' + p_z z'
   $
-  the coordinates of $x^'$ are [1 0 0]. Expanding the previous equation.
-
-  - Imagine that we know the rotation matrix $R$ that describes the orientation of $B$ respect to $A$.
-
-  $A_x'$ are the first columns of the rotation matrix, so
+  in this case, to reach the point $p$ we need to follow the direction of $x'$ for $p_x$ units, then follow the direction of $y'$ for $p_y$ units, ecc $dots$
 
 
-  in the final result (a column vector, so a point) we can see that each entry is a linear combination of the coordinate of the robot and the rotation matrix.
-]
+- Imagine that we know the rotation matrix $""^A_B R$ that describes the orientation of $B$ respect to $A$:
+$
+  ""^A_B R = mat(
+    x' dot x, y' dot x, z' dot x;
+    x' dot y, y' dot y, z' dot y;
+    x' dot z, y' dot z, z' dot z;
+  ) =
+  mat(
+    mg(r_(11)), mr(r_(12)), r_(13);
+    mg(r_(21)), mr(r_(22)), r_(23);
+    mg(r_(31)), mr(r_(32)), r_(33);
+  )
+  \ "where":\
+  ""^A mg(x') = mat(r_(11); r_(21); r_(31);) = r_(11) x + r_(21) y + r_(31) z\
+  ""^A mr(y') = mat(r_(12); r_(22); r_(32);) = r_(12) x + r_(22) y + r_(32) z\
+  dots
+$
+
+At this point, we can find the coordinates of $p$ in $A$ ($""^A p$) by:
+- *Substituction*: the point $p$ can be represented as a linear combination of the basis vectors of $B$.
+- *Collecting*: we can collect the terms by $x,y,z$
+
+$
+  ""^A p &= p_x ""^A x' + p_y ""^A y' + p_z ""^A z' \
+         &= p_x (r_(11)x, r_(21)y, r_(31)z) + p_y (r_(12)x, r_(22)y, r_(32)z) + p_z (r_(13)x, r_(23)y, r_(33)z)\
+         & "collecting terms"\
+         &= (r_(11) p_x + r_(12) p_y + r_(13) p_z) x + (r_(21) p_x + r_(22) p_y + r_(23) p_z) y + (r_(31) p_x + r_(32) p_y + r_(33) p_z) z \
+         &= mat(r_(11) p_x + r_(12) p_y + r_(13) p_z; r_(21) p_x + r_(22) p_y + r_(23) p_z; r_(31) p_x + r_(32) p_y + r_(33) p_z;)
+$
+
+We can write the final result as a matrix, where each row is the dot product of the corresponding row of the rotation matrix with the coordinate vector of $p$ in $B$. 
+
+In general, we can write the formula for the *coordinate transformation* as the product of a matrix (the rotation matrix) and a vector (the coordinates of $p$ in $B$):
+*$
+  ""^A p = ""^A_B R dot ""^B p
+$*
+
+
+
 
 
