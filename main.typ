@@ -49,3 +49,4 @@
 #include "chapters/Lezione2.typ"
 
 #include "chapters/rotations.typ"
+#include "chapters/Lezione4.typ"
