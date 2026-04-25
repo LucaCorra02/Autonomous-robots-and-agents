@@ -1,112 +1,133 @@
 #import "../template.typ": *
 
-== Rotations
-
-A rotation is just an angle and the axis about which we rotate. Any rotation can be described as:
+The Euler thoerem states that we can represent *any rotation* with an angle $theta$ and a rotation axis $r$. The rotation can be described as:
 $
   theta, r = mat(r_x; r_y; r_z)
 $
 where $r$ is an axis (represented as a vector) and $theta$ is the angle of rotation.
 
-We can represent a rotation with a quaternion, where:
+With *quaternions* the most intuitive way to represent a rotation is mapping the angle of rotation to the real part of the quaternion and the axis of rotation to the imaginary part of the quaternion. So we can represent a rotation with a quaternion, where:
 - a = theta
 - b = $r_x$
 - c = $r_y$
 - d = $r_z$
-but with this representation we are not enforcing the fact that it is a unit quaternion.
+But with this representation we are *not enforcing the fact that it is a unit quaternion*, so we need to normalize it. The final representation of the rotation is:
+$
+  q = mr(a) + mb(b) i + mg(c) j + mp(d) k\
+  mr(a) = cos(theta/2), mb(b) = r_x sin(theta/2), mg(c) = r_y sin(theta/2), mp(d) = r_z sin(theta/2)
+$
 
-The $4$ numbers that we have to choose are:
-$
-  a = cos(theta/2)
-  b = r_x * sin(theta/2)
-  c = r_y * sin(theta/2)
-  d = r_z * sin(theta/2)
-$
 We need to preserve unit quaternions, even when we operate with them, so we need to normalize them.
+
 #informally()[
   This representation gives me $r_x, r_y, r_z$ in terms of quaternions.
 ]
-Our rotation will be represented by:
+Our rotation will be represented by the unit quaternion as:
 $
-  r = cos(theta/2) + r_x * sin(theta/2) * i + r_y * sin(theta/2) * j + r_z * sin(theta/2) * k\
-  mat(a; b; c; d) = mat(cos(theta/2); r_x * sin(theta/2); r_y * sin(theta/2); r_z * sin(theta/2))
+  q = mr(cos(theta/2)) + mb(r_x sin(theta/2)) i + mg(r_y sin(theta/2)) j + mp(r_z sin(theta/2)) k \
+  mat(mr(cos(theta/2)); mb(r_x sin(theta/2)); mg(r_y sin(theta/2)); mp(r_z sin(theta/2)))
 $
-The final vector represents an arbitrary rotation. It also includes elementary rotations.
 
-=== Operations with quaternions
-
-If $q = mat(a; b; c; d)$ is a unit quaternion that represents a rotation, I can represent the same rotation with the rotation matrix $R$. There is a relation between the two:
-$//add matrix
-$
-#warning()[
-  It is always possible to convert one parameterization of a rotation into another, but some parameterizations are more compact and easier to use than others.
+#note()[
+  The final vector represents an *arbitrary rotation*. It also includes elementary rotations.
 ]
 
-From the quaternion we can extract the angle of rotation and the axis of rotation:
+== Operations with quaternions
+
+Suppose that $q = mat(a; b; c; d)$ is a unit quaternion, then the following properties hold:
+
+- We can represent the same rotation with a *rotation matrix $R$*. There is a relation between the two:
 $
-  theta = 2* "arccos"(a), r = mat(b / sin(theta/2); c / sin(theta/2); d / sin(theta/2))
+  R = mat(
+      2(a^2 + b^2) - 1, 2(b c - a d), 2(a c + b d);
+      2(a d + b c), 2(a^2 + c^2) - 1, 2(c d - a b);
+      2(b d - a c), 2(a b + c d), 2(a^2 + d^2) - 1
+  )
 $
 
-The identity matrix represents a *non-rotation*. I can express a non-rotation with a quaternion in this way:
+  #warning()[
+    It is *always possible to convert* one parameterization of a rotation into another, but some parameterizations are more compact and easier to use than others.
+  ]
+
+- From a quaternion we can also *extract the angle of rotation* and the *axis of rotation*:
 $
-  q = mat(1; 0; 0; 0)
+  theta &= 2 "arccos"(a)\
+  r &= mat(b / sin(theta/2); c / sin(theta/2); d / sin(theta/2))
 $
 
-The inverse of a rotation matrix $R$ is its transpose $R^T = R^(-1)$. The inverse of a quaternion is just the conjugate (I only invert the sign of the imaginary part):
+- The *identity matrix* represents a *non-rotation*. I can express a non-rotation with a quaternion in this way:
+  $
+    q = mat(1; 0; 0; 0)
+  $
+
+- The inverse of a rotation matrix $R$ is its transpose $R^T = R^(-1)$. The *inverse of a quaternion* is just the conjugate (we only invert the sign of the imaginary part):
 $
   q^* => "inverse rotation"
 $
 
-Suppose that we have a point $p = mat(p_x; p_y; p_z)$ and the quaternion $q$ that represents a rotation, $q = a + b i + c j + d k$.\
-I need to take $p$ and transform it into a quaternion. A point is represented with a *pure quaternion*, where only the real part is $0$:
+- *Addition* and *Multiplication* of quaternions. We can threat them as a polynomial with coefficients $a, b, c, d$ and variables $1, i, j, k$. The addition is just the sum of the coefficients, while the multiplication is more complicated because we need to take into account the properties of the imaginary units.
+
+=== Rotaiting a point
+
+Suppose that we have a point $p = mat(p_x;p_y;p_z)$ and a rotation represented by a quaternion $q = a + b i + c j + d k$. To apply the rotation to the point $p$ we need to do the following steps:
+
+- *Conversion*: we need to convert the point $p$ into a quaternion, because the rotation is represented by a quaternion. A point is represented with a *pure quaternion*, where only the real part is $0$:
 $
-  p' = 0 + p_x i + p_y j + p_z k
+  p = mr(0) + p_x i + p_y j + p_z k
 $
-Now I can rotate the point $p$ with the rotation $q$ with an operation called *sandwich product*:
+
+- *Rotation*: now that we have converted the point, we can apply the rotation to it. This operation is called *sandwich product*:
 $
-  p' = q p q^*
+  p' = mr(q) p mr(q^*)
 $
-where $p'$ is the rotated point, $p' = mat(p_x'; p_y'; p_z')$
+
+- Finnaly, we can extract the coordinates of the rotated point $p'$ from the quaternion, because the real part is $0$:
+$
+  p' = mat(p'_x; p'_y; p'_z)
+$
+
 
 === Composition of rotations
 
-Suppose that we have two rotation matrices $R_1$ and $R_2$ and we want to compose them. We can do this by multiplying them.
+Suppose that we have two rotation matrices $R_1$ and $R_2$ and we want to *compose them*. We can do this by multiplying them.
 
 #warning()[
-  When we compose rotations we need to be careful about the order of composition, because it is not commutative. $R_1 R_2$ is not the same as $R_2 R_1$.
+  When we compose rotations we need to be careful about the *order of composition*, because it is *not commutative*. $R_1 R_2$ is not the same as $R_2 R_1$.
 
-  If I mean that $R_2$ describes a rotation in the fixed frame (instead of the moving frame), then I need to pre-multiply it, so $R = R_2 R_1$.
+  If $R_2$ describes a rotation in the fixed frame (instead of the moving frame), then I need to pre-multiply it, so $R = R_2 R_1$.
 ]
 
-In the quaternion world, the composition of two rotations is just the multiplication of the two quaternions:
-- $q_"new" = q_2 q_1$ rotation about fixed axes
-- $q_"new"$ = $q_1 q_2$ rotation about moving axes
+In the quaternion world, the *composition* of two rotations is just the multiplication of the two quaternions:
+- $q_"new" = q_2 q_1$ rotation about *fixed axes*
 
-== Quaternions in robotics
-
-Quaternions are very useful to save computational time: I send $4$ numbers instead of $9$.
+- $q_"new" = q_1 q_2$ rotation about *moving axes*
 
 == Interpolation of rotations
 
-Suppose that we need to rotate an object from a position $R_1$ to a position $R_2$. We know the description of the initial and final rotation, but we need to find a way to do it. We need to find a sequence of rotations (*path*) that will take us from $R_1$ to $R_2$.
+Quaternions are very useful in robotics because they allow us to represent rotations in a compact way and also for send them over the network. With a rotation matrix we need to send $9$ numbers, while with a quaternion we only need to send $4$ numbers. This is a huge saving of bandwidth, especially when we need to send many rotations (for example, in a robot with many joints).
 
-Suppose that we use three angles (Euler angles) to represent the rotation. I can describe the transition using *linear interpolation*:
+The main disadvantage of quaternions is that they are not very intuitive to understand and they have some singularities (for example, when the angle of rotation is $180$ degrees, the quaternion is not well defined). However, they are still widely used in robotics because of their compactness and efficiency.
+
+Suppose that we need to *rotate an object* from a position $R_1$ to a position $R_2$. We know the description of the initial and final rotation, but we need to find a way to do it. We need to find a sequence of rotations (*path*) that will take us from $R_1$ to $R_2$.
+
+Suppose that we use three angles (*Euler angles*) to represent the rotation. I can describe the transition using *linear interpolation*:
 $
-  v_i = v_i alpha(v_f - v_i), alpha in [0,1]
+  v_alpha = v_i + alpha(v_f - v_i), alpha in [0,1]
 $
 where:
-- $v_i$ is the initial vector
-- $v_f$ is the final vector
-- $alpha$ is a parameter that goes from $0$ to $1$ and represents the progress of the interpolation. If $alpha = 0$ I'm in the initial position, if $alpha = 1$ I'm in the final position.
-#note()[
-  This trajectory follows the shortest path between the two rotations (Euclidean distance).
+- *$v_i$* is the initial vector
+- *$v_f$* is the final vector
+- *$alpha$* is a parameter that goes from $0$ to $1$ and represents the progress of the interpolation. If $alpha = 0$ I'm in the initial position, if $alpha = 1$ I'm in the final position.
+
+#warning()[
+  This trajectory seems to be a good solution, but it is not the best one because it does not follow the shortest path between the two rotations.
 ]
 
-But the linear Euler is not the best way to do it, because the shortest path between two rotations is not a linear interpolation of the angles, but a *spherical linear interpolation* (slerp). The slerp is defined as:
-$
-  "slerp"(q_1, q_2, alpha) = (q_1 sin((1-alpha) theta) + q_2 sin(alpha theta)) / sin(theta)
-$
-Unit quaternions are on the surface of a 4D sphere, so the shortest path between two quaternions is an arc of a circle on the surface of the sphere, not a straight line.
+The shortest path between two rotations is not a linear interpolation of the angles, but a *spherical linear interpolation* (slerp). The slerp is defined as:
+
+- Unit quaternions form a *$4$-dimensional unit sphere*: $ ||q|| = sqrt(a^2 + b^2 + c^2 + d^2) = 1$, so each unit quaternion is a point on the surface of a $4$-dimensional sphere.
+
+- *SLERP*: shortest path between two points on a sphere is an arc of a circle.
 
 #note()[
   It could happen that the intermediate rotation changes the axis of rotation, but this is not a problem because the slerp always follows the shortest path between the two rotations.
