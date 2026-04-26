@@ -137,9 +137,89 @@ The shortest path between two rotations is not a linear interpolation of the ang
   The shortest trajectory followed by a plane in 2D is not a straight line, but an arc of a circle. This is because on a sphere the shortest path between two points is an arc of a circle, not a straight line.
 ]
 
-== Change of reference frame
+=== Rototranslation
 
-We want to express the coordinates of a point $p$ (robot frame) in a reference frame $A$.
+Suppose that we have two reference frames, one attached to the robot $mr(B)$ and one fixed in the environment ($A$). The robot is moving in the environment, so it is translated and rotated with respect to the reference frame $A$.
+
+We want to express the coordinates of a point $mb(p)$ (robot frame) in a reference frame $A$. 
+
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    // Origin of frame A
+    let oax = 0
+    let oay = 0
+
+    // Origin of frame B as seen from A
+    let obx = 1.0
+    let oby = 1.2
+
+    // Shared point p in space
+    let px = 4.4
+    let py = 2.2
+
+    // Axes of frame A (black)
+    line((oax, oay), (2.1, 0), stroke: black + 1.3pt) // x
+    line((oax, oay), (0, 2.3), stroke: black + 1.3pt) // z
+    line((oax, oay), (1.4, 1.0), stroke: black + 1.2pt) // y
+
+    // Arrow heads for frame A
+    line((2.0, -0.07), (2.1, 0), stroke: black + 1.3pt)
+    line((2.0, 0.07), (2.1, 0), stroke: black + 1.3pt)
+    line((-0.07, 2.2), (0, 2.3), stroke: black + 1.3pt)
+    line((0.07, 2.2), (0, 2.3), stroke: black + 1.3pt)
+    line((1.32, 0.92), (1.4, 1.0), stroke: black + 1.2pt)
+    line((1.35, 0.88), (1.4, 1.0), stroke: black + 1.2pt)
+
+    // Axes of frame B (red)
+    line((obx, oby), (2.4, 0.95), stroke: red + 1.3pt) // x'
+    line((obx, oby), (3.1, 1.85), stroke: red + 1.3pt) // y'
+    line((obx, oby), (1.65, 2.95), stroke: red + 1.3pt) // z'
+
+    // Arrow heads for frame B
+    line((2.28, 0.98), (2.4, 0.95), stroke: red + 1.3pt)
+    line((2.31, 0.88), (2.4, 0.95), stroke: red + 1.3pt)
+    line((2.98, 1.80), (3.1, 1.85), stroke: red + 1.3pt)
+    line((3.01, 1.72), (3.1, 1.85), stroke: red + 1.3pt)
+    line((1.60, 2.83), (1.65, 2.95), stroke: red + 1.3pt)
+    line((1.74, 2.84), (1.65, 2.95), stroke: red + 1.3pt)
+
+    // Translation from A origin to B origin
+    line((oax, oay), (obx, oby), stroke: purple + 1pt)
+
+    // Approximate robot body at O'
+    circle((obx, oby), radius: 0.14, fill: luma(170), stroke: luma(120))
+
+    // Point p
+    circle((px, py), radius: 0.1, fill: rgb("6f9ec9"), stroke: none)
+
+    // Position vectors
+    line((oax, oay), (px, py), stroke: blue + 1.1pt)
+    line((obx, oby), (px, py), stroke: red + 1.1pt)
+
+    // Labels frame A
+    content((2.2, -0.22), $x$, font: ("New Computer Modern", 10pt))
+    content((1.52, 1.08), $y$, font: ("New Computer Modern", 10pt))
+    content((-0.25, 2.35), $z$, font: ("New Computer Modern", 10pt))
+
+    // Labels frame B
+    content((2.5, 0.75), $x'$, font: ("New Computer Modern", 10pt), fill: red)
+    content((1.55, 1.72), $y'$, font: ("New Computer Modern", 10pt), fill: red)
+    content((1.62, 3.08), $z'$, font: ("New Computer Modern", 10pt), fill: red)
+
+    // Origin labels and vectors
+    content((-0.22, -0.28), $O$, font: ("New Computer Modern", 10pt))
+    content((obx - 0.30, oby - 0.0), $O'$, font: ("New Computer Modern", 10pt))
+    content((0.32, 0.67), $""^A mp(O')$, font: ("New Computer Modern", 6pt), fill: purple)
+
+    // Point and coordinate labels
+    content((px + 0.35, py + 0.05), $p$, font: ("New Computer Modern", 10pt))
+    content((1.8, 0.5), $""^A p$, font: ("New Computer Modern", 9pt), fill: blue)
+    content((2.7, 1.95), $""^B p$, font: ("New Computer Modern", 9pt), fill: red)
+  }),
+  caption: "Rototranslation between frame A and frame B",
+)
 
 The robot is also translated and rotated. I need to do a rototranslation (translation + rotation). To do this I need these mathematical operations:
 - The *translation* between origins. A point $""^A 0'$ describes the position of the origin of the robot frame in the reference frame $A$.
