@@ -39,20 +39,20 @@ Suppose that $q = mat(a; b; c; d)$ is a unit quaternion, then the following prop
 - We can represent the same rotation with a *rotation matrix $R$*. There is a relation between the two:
 $
   R = mat(
-      2(a^2 + b^2) - 1, 2(b c - a d), 2(a c + b d);
-      2(a d + b c), 2(a^2 + c^2) - 1, 2(c d - a b);
-      2(b d - a c), 2(a b + c d), 2(a^2 + d^2) - 1
+    2(a^2 + b^2) - 1, 2(b c - a d), 2(a c + b d);
+    2(a d + b c), 2(a^2 + c^2) - 1, 2(c d - a b);
+    2(b d - a c), 2(a b + c d), 2(a^2 + d^2) - 1
   )
 $
 
-  #warning()[
-    It is *always possible to convert* one parameterization of a rotation into another, but some parameterizations are more compact and easier to use than others.
-  ]
+#warning()[
+  It is *always possible to convert* one parameterization of a rotation into another, but some parameterizations are more compact and easier to use than others.
+]
 
 - From a quaternion we can also *extract the angle of rotation* and the *axis of rotation*:
 $
-  theta &= 2 "arccos"(a)\
-  r &= mat(b / sin(theta/2); c / sin(theta/2); d / sin(theta/2))
+  theta & = 2 "arccos"(a) \
+      r & = mat(b / sin(theta/2); c / sin(theta/2); d / sin(theta/2))
 $
 
 - The *identity matrix* represents a *non-rotation*. I can express a non-rotation with a quaternion in this way:
@@ -69,7 +69,7 @@ $
 
 === Rotaiting a point
 
-Suppose that we have a point $p = mat(p_x;p_y;p_z)$ and a rotation represented by a quaternion $q = a + b i + c j + d k$. To apply the rotation to the point $p$ we need to do the following steps:
+Suppose that we have a point $p = mat(p_x; p_y; p_z)$ and a rotation represented by a quaternion $q = a + b i + c j + d k$. To apply the rotation to the point $p$ we need to do the following steps:
 
 - *Conversion*: we need to convert the point $p$ into a quaternion, because the rotation is represented by a quaternion. A point is represented with a *pure quaternion*, where only the real part is $0$:
 $
@@ -125,7 +125,7 @@ where:
 
 The shortest path between two rotations is not a linear interpolation of the angles, but a *spherical linear interpolation* (slerp). The slerp is defined as:
 
-- Unit quaternions form a *$4$-dimensional unit sphere*: $ ||q|| = sqrt(a^2 + b^2 + c^2 + d^2) = 1$, so each unit quaternion is a point on the surface of a $4$-dimensional sphere.
+- Unit quaternions form a *$4$-dimensional unit sphere*: $||q|| = sqrt(a^2 + b^2 + c^2 + d^2) = 1$, so each unit quaternion is a point on the surface of a $4$-dimensional sphere.
 
 - *SLERP*: shortest path between two points on a sphere is an arc of a circle.
 
@@ -137,11 +137,13 @@ The shortest path between two rotations is not a linear interpolation of the ang
   The shortest trajectory followed by a plane in 2D is not a straight line, but an arc of a circle. This is because on a sphere the shortest path between two points is an arc of a circle, not a straight line.
 ]
 
-=== Rototranslation
+== Homogeneous coordinates
+
+=== The problem of rototranslation
 
 Suppose that we have two reference frames, one attached to the robot $mr(B)$ and one fixed in the environment ($A$). The robot is moving in the environment, so it is translated and rotated with respect to the reference frame $A$.
 
-We want to express the coordinates of a point $mb(p)$ (robot frame) in a reference frame $A$. 
+We want to express the coordinates of a point $mb(p)$ (robot frame) in a reference frame $A$ ($""^A p$).
 
 #figure(
   cetz.canvas({
@@ -211,7 +213,7 @@ We want to express the coordinates of a point $mb(p)$ (robot frame) in a referen
     // Origin labels and vectors
     content((-0.22, -0.28), $O$, font: ("New Computer Modern", 10pt))
     content((obx - 0.30, oby - 0.0), $O'$, font: ("New Computer Modern", 10pt))
-    content((0.32, 0.67), $""^A mp(O')$, font: ("New Computer Modern", 6pt), fill: purple)
+    content((0.32, 0.67), $mp(""^A O')$, font: ("New Computer Modern", 6pt), fill: purple)
 
     // Point and coordinate labels
     content((px + 0.35, py + 0.05), $p$, font: ("New Computer Modern", 10pt))
@@ -221,119 +223,135 @@ We want to express the coordinates of a point $mb(p)$ (robot frame) in a referen
   caption: "Rototranslation between frame A and frame B",
 )
 
-The robot is also translated and rotated. I need to do a rototranslation (translation + rotation). To do this I need these mathematical operations:
-- The *translation* between origins. A point $""^A 0'$ describes the position of the origin of the robot frame in the reference frame $A$.
+As we can see in the figure, the robot frame of reference $B$ is translated and rotated  (*rototranslation*) with respect to the reference frame $A$. To achive that we need to perform two operations:
+
+- The *translation between origins*. A point $mp(""^A 0')$ describes the translation between the origins.
 
 - The *rotation* between the two frames. I can use a rotation matrix $""^A_B R$ to describe the rotation between the two frames (how the red axes are rotated with respect to the black axes). The components of the matrix are:
-$
-  ""^A x', ""^A y', ""^A z'
-$
-
-The translation followed by the rotation is called *forward kinematics*:
-$
-  ""^A p = ""^A_B R ""^B p + ""^A 0'
-$
-
-But with this representation we represent the point $p$ with 3 coordinates, and the translation direction is also a vector (3 coordinates), so we need to represent it with 3 coordinates as well. So we have 9 coordinates to represent the position of the point $p$ in the reference frame $A$. I need to remember the interpretation of the object.
-
-We can do better: we can represent the rototranslation with a single mathematical object.
-
-*Problem*: is there a way to do rototranslation with only one operation and represent it with a single mathematical object? Yes, we can use the *homogeneous transformation*.
-
-== Homogeneous coordinates
-
-The point $p$ is represented with three coordinates:
-$
-  p = mat(p_x; p_y; p_z)
-$
-But we can represent the same point with homogeneous coordinates:
-$
-  p = mat(p_x; p_y; p_z; mr(1))
-$
-#note()[
-  The fourth component should be $1$ to represent a point; if it is $0$ we represent a vector.
-]
-If we want to represent a direction the $4$ coordinate should be $0$:
-$
-  x = mat(x_x; x_y; x_z; mr(0))
-$
-
-#note()[
-  We add a fourth coordinate to distinguish between points and vectors.
-]
-
-The rototranslation changes in this way:
-- Translation: we obtain a 4-dimensional vector $""^A 0' = mat(""^A 0'_x; ""^A 0'_y; ""^A 0'_z; mr(1))$
-
-- Rotation: if I pack everything together I obtain a square matrix $4 times 4$, which has useful properties:
   $
-    mat(x_1, y_1, z_1, 0; y_1, y_2, y_3, 0; z_1, z_2, z_3, 0; t_x, t_y, t_z, 1)
+    ""^A x', ""^A y', ""^A z'
   $
+
+  The final formula is:
+  $
+    ""^A p = underbrace(""^A 0', "translation") + underbrace(""^A_B R ""^B p, "rotation")
+  $
+
+This is a good solution, but it is *not very efficient* because we need to do two operations (translation and rotation) to transform the point $p$ from frame $B$ to frame $A$. We need to solve two $mr("problems")$:
+
+- In this case, *points and direction are treated differently*, because the translation only applies to points, while the rotation applies to both points and directions. This is not very elegant, because we need to keep track of which points are points and which points are directions.
+
+- We want to represent both components of the rototranslation (translation and rotation) with a single mathematical object.
+
+- We want to pack the translation and the rotation together, in a single element.
+
+The solution is to use *homogeneous coordinates*, which allow us to represent both the translation and the rotation with a single matrix.
+
+=== Homogeneous coordinates: the solution
+
+The main idea is to add a *fourth coordinate* to the point $p$, so we can represent both the translation and the rotation with a single vector:
+
+- *Points*: The point $p$ is represented now with homogeneous coordinates, where the fourth coordinate is $1$:
+  $
+    p = mat(p_x; p_y; p_z) => p = mat(p_x; p_y; p_z; mr(1))
+  $
+
+- *Directions*: If we want to represent a direction the $4$ coordinate should be $0$:
+  $
+    x = mat(x_1; x_2; x_3) => x = mat(x_x; x_y; x_z; mr(0))
+  $
+
+#note()[
+  The fourth component should be $1$ to represent a point; if it is $0$ we represent a directions.
+]
+
+The *rototranslation* changes in this way:
+
+- *Translation*: we obtain a $4$-dimensional vector (the coordinates of the new origin):
+  $
+    ""^A 0' = mat(""Delta_x; ""Delta_y; ""Delta_z; mr(1))\
+    ""^A x' = mat(x_1; x_2; x_3; mr(0)), ""^A y' = mat(y_1; y_2; y_3; mr(0)), ""^A z' = mat(z_1; z_2; z_3; mr(0))
+  $
+
+- *Rotation*: if we pack the rotation and the translation together, we can represent the rototranslation with a single *$4 times 4$ transformation  matrix* (wich is a square matrix, with better properties than a rectangular matrix):
+  $
+    mat(x_1, y_1, z_1, ""Delta_x; x_2, y_2, z_2, ""Delta_y; x_3, y_3, z_3, ""Delta_z; 0, 0, 0, 1) = mat(""^A_B R, ""^A 0'; 0, 1) = ""^A_B T
+  $
+
+
   #note()[
-    The last row is always $0, 0, 0, 1$ because we need to preserve the homogeneous coordinates.
+    The *last row is always* $0, 0, 0, 1$ because we need to preserve the homogeneous coordinates.
+
+    The transformation matrix can *represent any rototranslation*, but it can also represent a pure rotation (if the last column is $0, 0, 0, 1$) or a pure translation (if the upper left $3 times 3$ block is the identity matrix).
   ]
-  In the rotation matrix I recognize the pattern: where delta is the translation. I can write the rotation matrix as:
-  $
-    mat(""^A_B R, ""^A 0'; 0, 1)
-  $
-//riguardare perchè
 
-The transformation matrix is a single $4 times 4$ matrix expressing both the rotation and the translation (any rototranslation).
+=== Rototranslation of points
 
-=== Rototraslation of points
+Assume that we have a point $mr(""^B p)$ and a transformation matrix $""^A_B T$. What happens if we multiply the transformation matrix by the point:
+$
+  ""^A p = ""^A_B T space mr(""^B p) &= mat(x_1, y_1, z_1, Delta_x; x_2, y_2, z_2, Delta_y; x_3, y_3, z_3, Delta_z; 0, 0, 0, 1) mat(p_x; p_y; p_z; 1)\
+  &= mat(x_1 p_x + y_1 p_y + z_1 p_z + Delta_x; x_2 p_x + y_2 p_y + z_2 p_z + Delta_y; x_3 p_x + y_3 p_y + z_3 p_z + Delta_z; p_x * 0 + p_y * 0 + p_z * 0 + 1) = mat(""^A 0 + ""^A_B R space ""^B p '; 1)
+$
 
-Assume that we have a point $""B^p$ and a transformation matrix $""^A_B T$. What happens if we multiply the transformation matrix by the point:
-$
-  ""^A p &= ""^A_B T ""^B p\
-  &= mat(x_1, y_1, z_1, 0; y_1, y_2, y_3, 0; z_1, z_2, z_3, 0; t_x, t_y, t_z, 1) mat(p_x; p_y; p_z; 1)\
-  &= mat(x_1 p_x + y_1 p_y + z_1 p_z + t_x; x_2 p_x + y_2 p_y + z_2 p_z + t_y; x_3 p_x + y_3 p_y + z_3 p_z + t_z; 1)
-$
-The result is a $4 times 1$ vector, with last coordinate equal to $1$. I can observe that I can simplify the formula as:
-$
-  mat(""^A_B R, ""^A 0'; 0, 1) mat(p_x; p_y; p_z; 1) = mat(""^A_B R ""^B p + ""^A 0'; 1)
-$
-I just need one single matrix product, and I can do it in a very efficient way.
+The result is a *$4 times 1$ vector*, with last coordinate equal to $1$. We just need one single matrix product, and I can do it in a very efficient way.
 
-=== Rototraslation of directions
-//riguardare
-Assume that we have a direction $""B^x$ and a transformation matrix $""^A_B T$. What happens if we multiply the transformation matrix by the direction:
+
+
+=== Rotation of directions
+
+Assume that we have a *direction* $""^B x'$ and a transformation matrix $""^A_B T$. What happens if we multiply the transformation matrix by the direction:
 $
-  ""^A x & = ""^A_B T ""^B x' \
-         & = mat(""^A_B R ""^B x'; 0)
+  ""^A_B T space ""^B x' &= mat(x_1, y_1, z_1, Delta_x; x_2, y_2, z_2, Delta_y; x_3, y_3, z_3, Delta_z; 0, 0, 0, 1) mat(x_x; x_y; x_z; 0)\
+  &= mat(x_1 p_x + y_1 p_y + z_1 p_z + Delta_x * 0; x_2 p_x + y_2 p_y + z_2 p_z + Delta_y * 0; x_3 p_x + y_3 p_y + z_3 p_z + Delta_z * 0; 0) = mat(""^A_B R space ""^B x'; 0)
 $
+
+#note()[
+  The *translation component* ($Delta_x, Delta_y, Delta_z$) *has no effect on the result*. This is happens because the last coordinate of the direction is $0$.
+]
 
 === Transformation multiple point
 
-#example()[
-  Point cloud obtained by a range sensor mounted on the robot. The red points are the points provided by the robot (they are in the robot reference frame).
+Suppose that we have $n$ points $p_1, p_2, ..., p_n$ and we want to transform them from frame $B$ to frame $A$.
+
+With the previous solution, for each point $p_i$, we need to do a single matrix product to transform it into the reference frame $A$ (we suppose that we have the transformation matrix $""^A_B R$). But with this solution we need to perform $n$ matrix products, where $n$ is the number of points.
+
+The $mg("solution")$ is to *pack all the points* into a single matrix, so I can do a single matrix product to transform all the points together:
+
+- Firt, we need to pack all the points into a single matrix, where each column is a point in homogeneous coordinates:
+  $
+    P = mat(p_(1,x), p_(2,x), ..., p_(n,x); p_(1,y), p_(2,y), ..., p_(n,y); p_(1,z), p_(2,z), ..., p_(n,z); 1, 1, ..., 1)
+  $
+- Then, we can multiply the transformation matrix by the matrix of points:
+  $
+    ""^A_B T space P = mat(x_1, y_1, z_1, Delta_x; x_2, y_2, z_2, Delta_y; x_3, y_3, z_3, Delta_z; 0, 0, 0, 1) mat(p_(1,x), p_(2,x), ..., p_(n,x); p_(1,y), p_(2,y), ..., p_(n,y); p_(1,z), p_(2,z), ..., p_(n,z); 1, 1, ..., 1) = mat(""^A 0' + ""^A_B R space ""^B p_1, ""^A 0' + ""^A_B R space ""^B p_2, ..., ""^A 0' + ""^A_B R space ""^B p_n; 1, 1, ..., 1)
+  $
+  We multiply the transformation matrix $4 times 4$ and the matrix of points $4 times N$, and we obtain a *$4 times N$* matrix that represents all the points in the reference frame $A$.
+
+  #note()[
+    This method it also works for directions, we just need to pack the directions into a matrix where the last row is $0, 0, 0, 0$ instead of $1, 1, ..., 1$.
+  ]
+
+== Transformation matrices
+
+The *composition rule* also works for transformation matrices:
+#theorem()[
+  $
+    ""^0_m T = ""^0_cancel(1) T ""^cancel(1)_2 T ... ""^(m-1)_m T
+  $
 ]
 
-For each point $p_i$ I only need to do a single matrix product to transform it into the reference frame $A$ (I suppose I have the transformation matrix $""^A_B R$). But with this solution I need to do $N$ matrix products, where $N$ is the number of points.
+This rule is useful because a robot usually have a *frame of reference for each joint* and a principal frame for movement, so we can use the composition rule to find the transformation matrix between the base of the robot and the end effector.
 
-The solution is to pack all the points into a single matrix, so I can do a single matrix product to transform all the points together:
-/*
-$
-  mat(p_1, p_2, ..., p_N) = mat(p_{1x}, p_{2x}, ..., p_{Nx}; p_{1y}, p_{2y}, ..., p_{Ny}; p_{1z}, p_{2z}, ..., p_{Nz}; 1, 1, ..., 1)
-$*/
-I multiply the transformation matrix $4 times 4$ and the matrix of points $4 times N$, and I obtain a $4 times N$ matrix that represents all the points in the reference frame $A$.
-
-== Transformation of matrix
-
-I also have the composition rule:
-$
-  ""^0_M T = ""0_1T ""^1_2 T ... ""^{m-1}_m T
-$
-
-This is useful because in a robot I usually have a frame of reference for each joint and a principal frame for movement, so I can use the composition rule to find the transformation matrix between the base of the robot and the end effector.
-
-Usually I know the transformation matrix between one frame and the next one, so I can use the composition rule to find the transformation matrix between the base of the robot and the end effector.
+#note()[
+  Usually we know the transformation matrix between one frame and the next one, so I can use the composition rule to find the transformation matrix between the base of the robot and the end effector.
+]
 
 #example()[
-  If I have a camera, the robot tells me the position of a mug in the coordinates of the camera frame, but I need to know the position of the mug in the robot frame to grasp it. I can use the composition rule to find the transformation matrix between the camera frame and the robot frame, so I can transform the position of the mug into the robot frame.
+  Suppose that we have a robot with $7$ joints, and we want to find the transformation matrix between the base of the robot and the final joint (camera).
 
-  Using the cancellation rule:
+  The robot tells me the position of a mug in the coordinates of the camera frame, but I need to know the position of the mug in the robot frame to grasp it. I can use the composition rule to find the transformation matrix between the camera frame and the robot frame, so I can transform the position of the mug into the robot frame ($r$):
   $
-    w_p_"Mug" = ""^W_7 ""^7 p_"Mug" = ""^W_0 ""^0_1 T ... ""^6_7 T ""^7 p_"Mug" = ""^W T dot ""^7 p_"Mug"
+    w_p_"Mug" = ""^W_r T ""^r_1 T ""^1_2 T ""^2_3 T ""^3_4 T ""^4_5 T ""^5_6 T ""^6_7 T space mb(""^7 p_"Mug") = ""^W_7 T space mb(""^7 p_"Mug")
   $
 ]
 
@@ -341,38 +359,117 @@ Usually I know the transformation matrix between one frame and the next one, so 
 
 A robot typically has many frames of reference, one for each joint and one for the end effector. Each frame is rigidly attached to the robot.
 
-The problem is being able to calculate the transformation matrix between any two frames of reference. One simple solution is to store a transformation matrix for each pair of frames, but this solution is not scalable because the number of pairs grows quadratically with the number of frames.
+The problem is being able to calculate the *transformation matrix between any two frames of reference*. One simple solution is to store a transformation matrix for each pair of frames, but this solution is not scalable because the number of pairs grows quadratically with the number of frames.
 
-The solution is to store only a subset of the transformation matrices, and obtain the others by composition. _For example_, if I have a robot with $n$ joints, I can store the transformation matrix between the base of the robot and each joint, and then use the composition rule to find the transformation matrix between any two joints.
+The final $mg("solution")$ is to *store only a subset* of the transformation matrices, and obtain the others by composition. _For example_, if I have a robot with $n$ joints, I can store the transformation matrix between the base of the robot and each joint, and then use the composition rule to find the transformation matrix between any two joints.
 
-To achieve that we use a *tf tree*, a tree that represents the frames of reference and the transformations between them, where:
+To achieve that we use a *TF tree*, a tree that represents the frames of reference and the transformations between them, where:
 - *Nodes* represent the frames of reference
 - *Edges* (oriented) represent the relative pose of the child frame with respect to the parent frame (transformation matrix)
   $
     A -> B = ""^A_B T
   $
-the transformation matrix that transforms the coordinates of a point from frame $B$ to frame $A$.
+  the transformation matrix that transforms the coordinates of a point from frame $B$ to frame $A$.
 
-//aggiungere immagine tf tree
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    let node-r = 0.52
+    let edge-stroke = black + 1pt
+
+    // Draw a directed segment with a compact arrow head.
+    let arrow(from, to, stroke: edge-stroke, head: 0.18, spread: 0.10) = {
+      let fx = from.at(0)
+      let fy = from.at(1)
+      let tx = to.at(0)
+      let ty = to.at(1)
+      let dx = tx - fx
+      let dy = ty - fy
+      let len = calc.sqrt(dx * dx + dy * dy)
+      let ux = dx / len
+      let uy = dy / len
+      let px = -uy
+      let py = ux
+      let bx = tx - head * ux
+      let by = ty - head * uy
+
+      line((fx, fy), (tx, ty), stroke: stroke)
+      line((bx + spread * px, by + spread * py), (tx, ty), stroke: stroke)
+      line((bx - spread * px, by - spread * py), (tx, ty), stroke: stroke)
+    }
+
+    let A = (0, 6.0)
+    let B = (-3.2, 4.2)
+    let C = (0, 4.2)
+    let D = (3.2, 4.2)
+    let E = (-3.2, 2.2)
+    let F = (0, 2.2)
+    let G = (3.2, 2.2)
+    let H = (-1.2, 0.3)
+    let I = (1.2, 0.3)
+
+    // Tree edges
+    arrow((A.at(0) - 0.35, A.at(1) - 0.35), (B.at(0) + 0.35, B.at(1) + 0.30))
+    arrow((B.at(0), B.at(1) - node-r), (E.at(0), E.at(1) + node-r))
+    arrow((A.at(0), A.at(1) - node-r), (C.at(0), C.at(1) + node-r))
+    arrow((C.at(0), C.at(1) - node-r), (F.at(0), F.at(1) + node-r))
+    arrow((F.at(0) - 0.25, F.at(1) - 0.40), (H.at(0) + 0.25, H.at(1) + 0.37))
+    arrow((F.at(0) + 0.25, F.at(1) - 0.40), (I.at(0) - 0.25, I.at(1) + 0.37))
+    arrow((A.at(0) + 0.35, A.at(1) - 0.35), (D.at(0) - 0.35, D.at(1) + 0.30))
+    arrow((D.at(0), D.at(1) - node-r), (G.at(0), G.at(1) + node-r))
+
+    // Highlighted paths
+    let p-red = red + 2.2pt
+    let p-green = rgb("1ca85f") + 2.2pt
+    arrow((H.at(0) + 0.05, H.at(1) + 0.30), (F.at(0) - 0.30, F.at(1) - 0.05), stroke: p-red, head: 0.22, spread: 0.12)
+    arrow((F.at(0), F.at(1) + 0.55), (C.at(0), C.at(1) - 0.28), stroke: p-red, head: 0.22, spread: 0.12)
+    arrow((C.at(0), C.at(1) + 0.55), (A.at(0), A.at(1) - 0.28), stroke: p-red, head: 0.22, spread: 0.12)
+
+    arrow((A.at(0) + 0.35, A.at(1) - 0.30), (D.at(0) - 0.35, D.at(1) + 0.05), stroke: p-green, head: 0.22, spread: 0.12)
+    arrow((D.at(0), D.at(1) + 0.35), (G.at(0), G.at(1) + 0.10), stroke: p-green, head: 0.22, spread: 0.12)
+
+    // Nodes
+    for (name, p) in (("A", A), ("B", B), ("C", C), ("D", D), ("E", E), ("F", F), ("G", G), ("H", H), ("I", I)) {
+      circle(p, radius: node-r, stroke: black + 1pt, fill: white)
+      content((p.at(0) - 0.09, p.at(1) - 0.11), text(size: 11pt, style: "italic")[#name])
+    }
+
+    // Edge labels
+    content((-1.90, 5.10), $""^A_B T$, font: ("New Computer Modern", 10pt))
+    content((-3.90, 3.20), $""^B_E T$, font: ("New Computer Modern", 10pt))
+    content((-0.60, 5.08), $""^A_C T$, font: ("New Computer Modern", 10pt))
+    content((-0.60, 3.18), $""^C_F T$, font: ("New Computer Modern", 10pt))
+    content((-1.2, 1.42), $""^F_H T$, font: ("New Computer Modern", 10pt))
+    content((0.95, 1.42), $""^F_I T$, font: ("New Computer Modern", 10pt))
+    content((1.35, 5.50), $""^A_D T$, font: ("New Computer Modern", 10pt))
+    content((2.55, 3.18), $""^D_G T$, font: ("New Computer Modern", 10pt))
+  }),
+  caption: "Example of TF tree with highlighted paths",
+)
 
 In this image, what is the transformation of $G$ with respect to $H$?
-- I need to check if there is a path between $G$ and $H$ (reverse paths are also OK)
+
+- First we need to check if there is a *path between* $G$ and $H$ (reverse paths are also OK)
 #warning()[
-  I always need a *connecting tree* (spanning tree) to be able to find the transformation between any two frames. If there is a frame that is not connected to the rest of the tree, I will not be able to find the transformation between that frame and the other frames.
+  We always need a *connecting tree* (spanning tree) to be able to find the transformation between any two frames. If there is a frame that is not connected to the rest of the tree, I will not be able to find the transformation between that frame and the other frames.
 ]
 
-- During the check I need to keep track of the direction of the edges.
+- During the check I need to keep track of the *direction of the edges*.
 
 - I need a way to represent the inverse transformation, because if I have an edge $A -> B$ I can use it to find the transformation between $B$ and $A$ by inverting the transformation matrix.
 
-  Given $""^A_B T$, how do I obtain $""^B_A T$? I can use the inverse of the transformation matrix:
-  $
-    ""^B_A T = (""^A_B T)^(-1) = mat(""^A_B R^T, -""^A_B R^T ""^A 0'; 0, 1)
-  $
+  *Inverse problem*: given $""^A_B T$ how we can obtain $""^B_A T$, where $""^B_A T$ is such that $""^A_B T space ""^B_A T = I$? We can use the inverse of the transformation matrix:
+$
+  ""B_A T = mat(
+    ""^B_A R, -""^B_A R space ""^A 0';
+    0, 1;
+  )
+$
 
-- If the arc is traversed upwards (from child to parent) I need to invert the transformation matrix; if the arc is traversed downwards (from parent to child) I can use the transformation matrix as it is.
+- If the arc is $mr("traversed upwards")$ (from child to parent) we need to invert the transformation matrix; if the arc is $mg("traversed downwards")$ (from parent to child) we can use the transformation matrix as it is.
 
 $
-  ""H_G T = ""^H_F T ""^F_C T ""^C_A T ""^A_B T ""^B_G T
+  ""^H_G T = mr(""^H_F T) space mr(""^F_C T) space mr(""^C_A T) space mg(""^A_D T) mg(""^D_G T)
 $
 
