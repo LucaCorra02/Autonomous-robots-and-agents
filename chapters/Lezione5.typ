@@ -1,4 +1,4 @@
-#import "../template.typ": *
+or#import "../template.typ": *
 
 = Bayes Filter
 
@@ -184,6 +184,10 @@ $
 
   #note()[
     I can correct the previous belief about the plant by using the new measurement $z_t$ and the bayes theorem.
+  ]
+
+  #warning()[
+    In this example i can't simplify the $z_t$ when the state $x$ is changing from the measurements that i made.
   ]
 ]
 
