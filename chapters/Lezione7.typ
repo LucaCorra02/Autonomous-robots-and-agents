@@ -90,3 +90,60 @@ The task is to compute the posterior:
 $
   "Bel"(x_t) = p(x_t | u_(1:t), z_(1:t))
 $
+
+== Bayes filter derivation // non in esame
+
+The probelem is:
+$
+  "Bel"(x_t) = p(x_t | u_(1:t), z_(1:t))
+$
+belief of state $x_t$ given the measurements and actions. I have a diagnostical question, i can use the Bayes theoreme inverting the last state and measurements:
+$
+  mu mr(p(z_t| x_t, u_(1:t), z_(1:t-1))) p(x_t | u_(1_t),z_(1:t-1))
+$
+the red part it's only infuendec by the last state, the actions do not infouenced the last measurements. The state explaun $z_t$. So for the markov assumntion:
+$
+  mu p(z_t | mr(x_t)) mb(p(x_t | u_(1:t), z_(1:t-1)))
+$
+The blue part is just a sum of the possibile $x_(t-1)$ we can have any $u_t$ actions that leads to $x_t$ form $x_(t-1)$ with different probability. In the continuos case is an integral:
+$
+  mu p(z_t | z_t) integral mr(p(x_t | x_(t-1),u_(1:t))), z_(1:t-1)) p(x_(t-1)|u_(1:t), z_(1:t-1)) d x_(t-1)
+$
+- the red part can be semplified by markov assumption
+- In the right part the $u_t$ action is in the past, so we cante remove it, because we are considering the $x_(t-1)$ state.
+$
+  mu p(z_t | x_t) integral p(x_t | x_(t-1),u_t)p(x_(t-1)|u_(1:t-1),z_(1:t-1)) d x_(t-1)
+$
+
+the final formula is:
+$
+  "Bel"(x_t) = mu p(z_y | x_t) integral p(x_t | x_(t-1), u_t) "Bel"(x_(t-1)) d x_(t-1)
+$
+
+#example()[
+  suppose that we are in the state $x_t = 5$. The firt part i need to compute is:
+  - $p(z_t | x_t)$ thats' teel me the probability to see a red light when we are in the room $5$ (it's the likelihood at time $5$)
+
+  - The integral part says (suppose that i move from room $1$ to $5$):
+    - The belife i was in the room $1$
+    - I need to take the action $x_t$ (the action is next, move to the next room). If a took the action next and i was in $1$ what's the probability of hanggig up in $5$? The probability is determinated by the motion model
+
+  - Finally i have to normalize $mu$, so every number are sum up to $1$.
+]
+
+I need the shape of the function, to compute the integral, in that case the product between p and the belief. In practise the shape of p and the belief it's a *non linear* function, it's complex to compute. As a conseguence the belief has a very complex shape.
+
+The best shape of the belief it's a campana function. The maximum will be the best probability value, then the probability decrease after that point. Around the guess the probability decrease.
+
+If we have a bimodal (two hypotesis), this shape it's more complex. In this case there is no magic formula to integrate the formula.
+
+But we can decide that the motion model is a gautian distribution (so we can have a linear belief), this hypotesis it's not perfect but is good enought. Even the prior will be a gausian.
+
+#warning()[
+  The product of two gausian it's a gausian. And we know how to integrate a gausian, it's can be easilly integrate.
+]
+
+The *calman filter* it's just a byas filter where everything it's a Gaussian. In the robotic field, this assumption it's good enough.
+
+
+
