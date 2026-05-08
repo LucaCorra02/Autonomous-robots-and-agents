@@ -145,5 +145,21 @@ But we can decide that the motion model is a gautian distribution (so we can hav
 
 The *calman filter* it's just a byas filter where everything it's a Gaussian. In the robotic field, this assumption it's good enough.
 
+=== Bayesfilter algo
+
+In the discrete versione we iterate for all $x_t$ possible state. fro each one of those i need to compute a belief. In the discrete world i only have a sum (it's like a table).
+
+with the for loop i calculate only a part of the formula, for each $x_t$ then i compute $"Bell"(x_t)$ and calculate the product with the summatory.
+
+In this case the two part can be enterpered in two different part:
+- $hat("Bell"(x_t))$ it's the belief i'm in the state $x_t$ i compute them whitout considering the measurements. It's like a prediction we belive to be in the $x_t$ state.
+#note()[
+  I only use the motion mdoel
+]
+
+- the last part it's the corection. I use the sensor and apply i correction on the belief where i am, based on the measurements on the sensor
+
+
+
 
 
