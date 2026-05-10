@@ -200,6 +200,22 @@ $
   P(A| E, mb(Z)) = (P(E|A,mb(Z))P(A|mb(Z))) / P(E|mb(Z))
 $
 
+=== Robotic perspective
+
+Usually a state $x$ encodes some features of the robot or of the environment we want to reason about. A state can be static or dynamic, fully observable or partially observable, discrete or continuous, $dots$.
+
+In mobile robotics one common state is the *$mr("pose")$* of the robot:
+$
+  p = <(hat(x), hat(y)), theta>
+$
+it encodes the position on the plane with respect to some fixed frame of reference and the orientation $theta$
+
+
+
+
+
+
+
 #example()[
   The robot has a camera. The robot needs to look more closely at a plant and determine whether the plant is healthy or not (it is like a binary sensor).
 
@@ -232,4 +248,115 @@ In the previous example, this means that in $p(z_t|x,z_1, dots, z_(t-1))$, the m
 #warning()[
   In the case of $p(z_t | z_1, dots, z_(t-1))$, *I cannot simplify because I do not have $x$*. These measurements tell me something about the new measurement $z_t$ because they are all measurements and they are all correlated.
 ]
+
+
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    // Canvas scale and robot parameters
+    let cx = 1.8
+    let cy = 1.2
+    let theta = 0.65 // robot orientation in radians
+    let rw = 1.4 // robot width
+    let rl = 1.0 // robot length
+
+    // helper: rotate a local point (x,y) by theta and translate to (cx,cy)
+    let rot = p => {
+      let x = p.at(0)
+      let y = p.at(1)
+      let rx = cx + calc.cos(theta) * x - calc.sin(theta) * y
+      let ry = cy + calc.sin(theta) * x + calc.cos(theta) * y
+      (rx, ry)
+    }
+
+    // Draw global axes
+    line((0, 0), (4.2, 0), stroke: black + 1.4pt)
+    line((0, 0), (0, 3.6), stroke: black + 1.4pt)
+    // axis arrowheads
+    line((4.0, -0.06), (4.2, 0), stroke: black + 1.4pt)
+    line((4.0, 0.06), (4.2, 0), stroke: black + 1.4pt)
+    line((-0.06, 3.45), (0, 3.6), stroke: black + 1.4pt)
+    line((0.06, 3.45), (0, 3.6), stroke: black + 1.4pt)
+
+    // dashed reference lines (blue)
+    let dash = (a, b) => line(a, b, dash: (0.06, 0.06), stroke: rgb("5fa6e6") + 0.9pt)
+    dash((cx, 0), (cx, cy))
+    dash((0, cy), (cx, cy))
+
+    // robot body corners in local robot frame (centered)
+    let hw = rw / 2
+    let hl = rl / 2
+    let c1 = rot((-hw, -hl))
+    let c2 = rot((hw, -hl))
+    let c3 = rot((hw, hl))
+    let c4 = rot((-hw, hl))
+
+    // robot main body (diamond/rectangle rotated) — outline using lines
+    line(c1, c2, stroke: black + 1.6pt)
+    line(c2, c3, stroke: black + 1.6pt)
+    line(c3, c4, stroke: black + 1.6pt)
+    line(c4, c1, stroke: black + 1.6pt)
+
+    // central red circle (robot center)
+    circle((cx, cy), radius: 0.22, fill: rgb("c94141"), stroke: none)
+
+    // wheels: two small rectangles on left/right sides (local offsets)
+    let wheel = (dx, dy) => {
+      let ww = 0.18
+      let wl = 0.55
+      let p1 = rot((dx - ww / 2, dy - wl / 2))
+      let p2 = rot((dx + ww / 2, dy - wl / 2))
+      let p3 = rot((dx + ww / 2, dy + wl / 2))
+      let p4 = rot((dx - ww / 2, dy + wl / 2))
+      line(p1, p2, stroke: luma(120))
+      line(p2, p3, stroke: luma(120))
+      line(p3, p4, stroke: luma(120))
+      line(p4, p1, stroke: luma(120))
+    }
+
+    wheel(-hw - 0.06, 0.0)
+    wheel(hw + 0.06, 0.0)
+
+    // sensors (yellow) near the front corners
+    let sensor = (dx, dy) => {
+      let s = 0.14
+      let p1 = rot((dx - s / 2, dy - s / 2))
+      let p2 = rot((dx + s / 2, dy - s / 2))
+      let p3 = rot((dx + s / 2, dy + s / 2))
+      let p4 = rot((dx - s / 2, dy + s / 2))
+      line(p1, p2, stroke: black + 0.6pt)
+      line(p2, p3, stroke: black + 0.6pt)
+      line(p3, p4, stroke: black + 0.6pt)
+      line(p4, p1, stroke: black + 0.6pt)
+    }
+
+    sensor(0.45, hl - 0.14)
+    sensor(0.85, 0.0)
+
+    // orientation wedge (field of view) in translucent blue
+    let fov = 1.5
+    let ang = 0.65
+    let pA = (cx + fov * calc.cos(theta + ang), cy + fov * calc.sin(theta + ang))
+    let pB = (cx + fov * calc.cos(theta - ang), cy + fov * calc.sin(theta - ang))
+    // field-of-view triangle outline
+    line((cx, cy), pA, stroke: rgb("9fc9ee") + 1.2pt)
+    line((cx, cy), pB, stroke: rgb("9fc9ee") + 1.2pt)
+    line(pA, pB, stroke: rgb("9fc9ee") + 1.2pt)
+
+    // small beta angle wedge at robot center (green)
+    let a1 = theta
+    let a2 = theta
+    let ar1 = (cx + 1.32 * calc.cos(a1), cy + 0.32 * calc.sin(a1))
+    let ar2 = (cx + 0.32 * calc.cos(a2), cy + 1.32 * calc.sin(a2))
+    line((cx, cy), ar1, stroke: rgb("8fcf9d") + 1pt, fill: rgb("8fcf9d"))
+    line((cx, cy), ar2, stroke: rgb("8fcf9d") + 1pt, fill: rgb("8fcf9d"))
+    line(ar1, ar2, stroke: rgb("8fcf9d") + 1pt, fill: rgb("8fcf9d"))
+
+    // axis labels
+    content((1.75, -0.3), $hat(x)$, font: ("New Computer Modern", 10pt))
+    content((-0.22, 1.25), $hat(y)$, font: ("New Computer Modern", 10pt))
+  }),
+  caption: "Robot pose (schematic)",
+)
 
