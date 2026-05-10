@@ -210,46 +210,6 @@ $
 $
 it encodes the position on the plane with respect to some fixed frame of reference and the orientation $theta$
 
-
-
-
-
-
-
-#example()[
-  The robot has a camera. The robot needs to look more closely at a plant and determine whether the plant is healthy or not (it is like a binary sensor).
-
-  I make multiple observations (I can look at the plant from different angles). The measurements are:
-  $
-    z_1,z_2,z_3, dots, z_n
-  $
-  We want the probability that the plant is healthy given the measurements: $"Bel"(X)$
-  If I set $x = 1$, I see a diseased plant; if I set $x = 0$, I see a healthy plant. I want to compute:
-  $
-    P(x|mb(z_1), mb(z_2), mb(z_3), dots, mr(z_t)) = p(z_t | x, z_1, dots, z_(t-1)) dot p(x | z_1, dots, z_(t-1)) / p(z_t | z_1, dots, z_(t-1))
-  $
-  The blue measurements are background knowledge: they are the measurements that we have already seen, while the red measurement is the new measurement that we have just seen.
-
-  $p(x | z_1, dots, z_(t-1))$ is what I believe about the plant before the last measurement $z_t$; it is a sort of recursive definition of the belief.
-
-  #note()[
-    I can correct the previous belief about the plant by using the new measurement $z_t$ and the bayes theorem.
-  ]
-
-  #warning()[
-    In this example, I cannot simplify $z_t$ when the state $x$ is changing from the measurements that I made.
-  ]
-]
-
-=== Markov assumption
-
-In the previous example, this means that in $p(z_t|x,z_1, dots, z_(t-1))$, the measurements $z_1,dots,z_(t-1)$ do not give us any information about the new measurement $z_t$ *once we know the state of the world $x$*. This is called the *Markov assumption*.
-
-#warning()[
-  In the case of $p(z_t | z_1, dots, z_(t-1))$, *I cannot simplify because I do not have $x$*. These measurements tell me something about the new measurement $z_t$ because they are all measurements and they are all correlated.
-]
-
-
 #figure(
   cetz.canvas({
     import cetz.draw: *
@@ -344,14 +304,12 @@ In the previous example, this means that in $p(z_t|x,z_1, dots, z_(t-1))$, the m
     line((cx, cy), pB, stroke: rgb("9fc9ee") + 1.2pt)
     line(pA, pB, stroke: rgb("9fc9ee") + 1.2pt)
 
-    // small beta angle wedge at robot center (green)
-    let a1 = theta
-    let a2 = theta
-    let ar1 = (cx + 1.32 * calc.cos(a1), cy + 0.32 * calc.sin(a1))
-    let ar2 = (cx + 0.32 * calc.cos(a2), cy + 1.32 * calc.sin(a2))
-    line((cx, cy), ar1, stroke: rgb("8fcf9d") + 1pt, fill: rgb("8fcf9d"))
-    line((cx, cy), ar2, stroke: rgb("8fcf9d") + 1pt, fill: rgb("8fcf9d"))
-    line(ar1, ar2, stroke: rgb("8fcf9d") + 1pt, fill: rgb("8fcf9d"))
+    // filled theta wedge at robot center (green)
+    let a1 = theta - 0.28
+    let a2 = theta + 0.02
+    let wr = 0.42
+    let ar1 = (cx + wr * calc.cos(a1), cy + wr * calc.sin(a1))
+    let ar2 = (cx + wr * calc.cos(a2), cy + wr * calc.sin(a2))
 
     // axis labels
     content((1.75, -0.3), $hat(x)$, font: ("New Computer Modern", 10pt))
@@ -360,3 +318,56 @@ In the previous example, this means that in $p(z_t|x,z_1, dots, z_(t-1))$, the m
   caption: "Robot pose (schematic)",
 )
 
+The robot can change information the environment:
+- *From the environment to the robot*: sensor measurements $z$ typically do *not modify* the environment, they acquire information and reduce the uncertainty about the state of the world.
+
+- *From the robot to the environment*: *control actions* $u$ typically *modify* the environment (the robot physically acts int he environment), they change the state of the world and increase the uncertainty about the state of the world.
+
+The robot needs to *estimate* the state of the world $X$ by using the sensor measurements $z$ and the control actions $u$, this is called a *belief* about the state of the world, and it is denoted as $"Bel"(x_t)$:
+$
+  "Bel"(x_t) = p(x_t | z_1, dots, z_t, u_1, dots, u_(t)) = p(x_t | z_(1:t), u_(1:t)) \
+  "where" x_t "is the state of the world at time" t
+$
+The belief is a *probability distribution* over the state of the world, it is a function that maps each possible state of the world ($x_T$) to a probability.
+
+#example()[
+  Suppose that we have a robot with a camera that can look at a plant and determine whether the plant is healthy or not. \
+  The state of the world $X$ is a *binary variable* that can take two values: $0$ (healthy plant) and $1$ (diseased plant). The robot needs to estimate the probability that the plant is healthy given the measurements that it has made:
+
+  - The robot take multiple measurements of the plant, for example by looking at the plant from different angles. The measurements are denoted as $z_1, z_2, z_3, dots, z_n$.
+
+  - We want to compute the probability that the plant is healthy given the measurements: $"Bel"(X)$ (if we have set $x = 1$, we see a diseased plant):
+  $
+    "Bel"(x) &= p(x|mb(z_1), mb(z_2), mb(z_3), dots, mr(z_t)) \
+    &= (p(mr(z_t) | x, mb(z_1), dots, mb(z_(t-1))) dot p(x | mb(z_1), dots, mb(z_(t-1)))) / p(mr(z_t) | mb(z_1), dots, mb(z_(t-1)))
+  $
+  The $mb("blue")$ measurements are background knowledge: they are the measurements that we have already seen, while the $mr("red")$ measurement is the new measurement that we have just seen.\
+  $p(x | z_1, dots, z_(t-1))$ is what we believe about the plant *before* the last measurement *$z_t$*. It is a sort of recursive definition of the belief.
+  #note()[
+    I can correct the previous belief about the plant by using the new measurement $z_t$ and the bayes theorem.
+  ]
+]
+
+== Markov assumption
+
+In the previous example, we can ask ourselves on what does $z_t$  depend on. If we assume the *Markov assumption*, we can say that $z_t$ *depends only on the current state of the world* $x_t$ and not on the previous measurements $z_1, dots, z_(t-1)$. Formally, in the previous example, we can compute the belief as:
+$
+  "Bel"(x) & = p(x|mb(z_1), mb(z_2), mb(z_3), dots, mr(z_t)) \
+           & = (p(mr(z_t) | x) dot p(x | mb(z_1), dots, mb(z_(t-1)))) / p(mr(z_t) | mb(z_1), dots, mb(z_(t-1)))
+$
+In the formula we assume the Markov assumption. As we can see there is a distinction if the dependency with the past measurements its valid or not:
+
+- If the state of the world *$x$* is *known*, then the past measurements $z_1, dots, z_(t-1)$ do not give us any information about the new measurement $z_t$; $z_t$ is *indipendent* of the past measurements $z_1, dots, z_(t-1)$.
+  #example()[
+    Knowing what a sensors saw a minute ago dosen't help us to predict the current reading if we already know the state of the plant.
+  ]
+
+- If the state of the world *$x$* is *unknown*, then the past measurements $z_1, dots, z_(t-1)$ give us some information about the new measurement $z_t$; $z_t$ is *depends* on the past measurements $z_1, dots, z_(t-1)$.
+  #example()[
+    Knowing what a sensors saw a minute ago helps us to predict the current reading if we don't know the state of the plant.
+  ]
+
+
+#note()[
+  Under the Markov assumption, past and present measurements are *conditionally independent* given the current state of the world. This means that if we know the current state of the world, then knowing the past measurements does not give us any information about the new measurement, and vice versa.
+]
