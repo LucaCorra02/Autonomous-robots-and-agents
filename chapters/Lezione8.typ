@@ -1,173 +1,151 @@
 #import "../template.typ": *
 
-= Bayeses Filter
+== Bayes Filter
 
-Partical filter is a sample of the belief that we want to manteine, instead of representing the belief with a formula.
-#warning()[
-  In this case the real bottlekenck is the number of particles that we can mantain, and the more particles we have the better the approximation of the belief is.
-]
-
-== Robot Motion componet
-
-In our bayes filter we need to predict the action of the robot. We need a model for the prediction of the next state.
-
-Let's considera a differential drive robot: two wheeels that can rotato at different speed. By applying a difference in the speed of the two wheels we can make the robot turn.
-
-=== Differntial drive
-
-//aggiungre immagine
-
-We can represent the robot with a pose $((x,y), theta)$ in a global frame of reference. We can't see the $z$ because we are in a 2D world. We also have a red frame of reference that is attached to the robot.
-
-*Skid steering*: is when we apply different angular velocity to the two wheels, the robot rotate. We are only consider an exampel with two wheels, but we can have more than two wheels.
-
-We only need two parameters to describe the movement of the robot:
-- $R$: is the radius of the wheel, $2 R$ is the width of the robot.
-- $L$: separation of the two wheels, $L$ is the width of the robot.
-
-The *controls* allow us to control the robot:
-- $omega_r, omega_l$: are the angular velocity of the right and left wheel, respectively.
-
-- $v_r, v_l$: is the linera velocity of the right and left wheel, respectively. We can compute the linear velocity of the wheel as $v = R * omega$.
+For an arbitrary probability distribution, it is hard to find a closed mathematical formula. 
+Why do we often use a Gaussian distribution? Because it emerges naturally from many real-world scenarios and is mathematically convenient: the integral problem turns into simple linear algebra.
 
 #note()[
-  Angular velocity and linear velocity are different, but they are related by the radius of the wheel. We can control the robot by controlling the angular velocity of the wheels, or by controlling the linear velocity of the wheels.
+  *Parametric method*: representing the belief using a synthetic description given by mathematical parameters (e.g., mean and variance of a Gaussian). Examples include the Kalman Filter and the Extended Kalman Filter (EKF).
 ]
 
-Possibile motions:
-- forward / backward
-- turn in place
-- motion alog an arc
+Another method, instead of the standard parametric Bayes filter, is the *Particle Filter* (a non-parametric method).
+The idea is to use a finite set of samples (called particles) to represent the belief. Instead of representing the belief with a rigid equation, we represent it with, for example, 100 empirical examples of possible states.
 
-We can rapresents the postion of the robot in the global frame of reference with the pose $((x',y'),theta)$. Suppose that we have a plane, we chose a red point that is the pose. It's not only $x, y$ but also $theta$, the red point lives in a $3 D$ point, it represent a possibile configuration. Given another point the question is if we can *compute the velocity between the two points*?\
-The velocity is a vector with a magnitude and a direction but *i can't chose a random velocity*:
-- The robot has a maximum velocity, so we can't go faster than that.
+#warning()[
+  In this case, the real bottleneck is the number of particles we can maintain. The more particles we have, the better the approximation of the belief, but the higher the computational cost.
+]
 
-- The robot can't move in any direction for some physical constraints, for example a car can't move sideways, it can only move forward and backward. This depends on the *differential drive model*, if we have a different model we can move in different ways.\
-  #note()[
-    This contraints is what velocity i can apply to the root in a particular configuration.
-  ]
+Extended Kalman Filters and Particle Filters are two representative implementations for solving the integral problem in Bayes Filters.
 
-- When we integrate a velocity we obtain the position. This constraint about velocity can not integrate to obtain a configuration constraint, that is called a *non-holonomic constraint*.
+== Robot Motion Component
 
-  #informally()[
-    The robot can be anywhere in the plane but the way i reach a particular position can't be any.
-  ]
+We talked about action models, but what does that imply in practice? 
+In a Bayes filter, we need to predict the effect of the actions of the robot. Here, actions are motions. We need a model to predict the next state.
 
-if we have a holonomic robot, it can be move in any direction and way in the space, but they are very difficult to build. For example a drone is a holonomic robot, it can move in any direction and way in the space.
+Let's consider a *differential drive robot*: a robot with two wheels that can rotate at different speeds. By applying a difference in the speed of the two wheels, we can make the robot turn or describe circumferences.
+- *Linear velocity*: represented as a vector.
+- *Angular velocity*: represented as a circled arrow.
 
-Formally if i want to describe an object that change in time i can use the *derivative*. I can compute the derevative of $x,y,theta$ as a function of the controls $theta_r, theta_l$ given this simple trigonometric formula:
+=== Differential Drive Kinematics
+
+//aggiungere immagine
+
+We represent the position of the robot with a pose $s = (x, y, theta)$ in a global frame of reference. We don't consider the $z$-axis because we are operating in a 2D world. We also have a local frame of reference attached to the robot itself.
+
+*Skid steering*: when we apply different angular velocities to the two wheels, the robot rotates.
+We only need a few parameters to describe the geometry and movement of the robot:
+- $R$: the radius of the wheel.
+- $L$: the separation distance between the two wheels (width of the robot).
+
+The *controls* allow us to move the robot:
+- $omega_r, omega_l$: angular velocities of the right and left wheel, respectively.
+- $v_r, v_l$: linear velocities of the right and left wheel. We can compute the linear velocity of a wheel as $v = R * omega$.
+
+#note()[
+  Angular velocity and linear velocity are physically different, but they are related by the radius of the wheel. We can control the robot equivalently by controlling either the angular or the linear velocities of its wheels.
+]
+
+Possible motions include:
+- Forward / backward
+- Turn in place
+- Motion along an arc
+
+=== Velocity Constraints and Non-Holonomic Systems
+
+Given a specific configuration, can we choose to apply an *arbitrary* velocity to the robot? 
+*NO!*
+
+1. The robot has a maximum velocity (physical motor limits).
+2. Imagine a car: you cannot apply a velocity that starts from the side door. The vehicle is constrained by its physical structure; it cannot move sideways.
+
+What happens if we integrate a velocity? We obtain a position. But can this constraint on velocity be integrated into a strict constraint on the final configuration? 
+No, the constraint on velocity cannot be integrated to reduce the reachable workspace. This is called a *non-holonomic constraint*.
+
+#informally()[
+  The robot can reach basically anywhere in the 2D plane, but the *way* it reaches a particular position cannot be arbitrary. It cannot move freely like a geometric point (e.g., a car cannot move sideways to parallel park instantly).
+]
+
+Most wheeled robots are non-holonomic (e.g., cars with Ackermann steering). If we have a holonomic robot (like a drone), it can move in any direction in space, but these are generally more difficult to build on the ground.
+
+=== Transition Equations
+
+How does the pose change in time? 
+Formally, to describe an object that changes over time, we use the *derivative*. We can compute the derivative of $x, y, theta$ (denoted as $dot(x), dot(y), dot(theta)$) as a function of the controls $omega_r, omega_l$ given these simple trigonometric formulas:
+
 $
   dot(x) = R/2 * (omega_r + omega_l) * cos(theta) \
   dot(y) = R/2 * (omega_r + omega_l) * sin(theta) \
   dot(theta) = R/L * (omega_r - omega_l)
 $
-The $dot(x)$ it says: if i change the controls for a small amount of time how much i change the position of the robot. If i want to use this equation to predict the position of the robot after a small time a need to introduce the time concept:
+
+The $dot(x)$ tells us: if we apply the controls, how much does the position change in that instant? 
+If we want to use this equation to predict where the robot will be after a small time step $Delta t$, we need to integrate it over time:
+
 $
-  x(t + delta t) = x(t) + dot(x) * delta t \
-  y(t + delta t) = y(t) + dot(y) * delta t \
-  theta(t + delta t) = theta(t) + dot(theta) * delta t
+  x(t + Delta t) = x(t) + dot(x) * Delta t \
+  y(t + Delta t) = y(t) + dot(y) * Delta t \
+  theta(t + Delta t) = theta(t) + dot(theta) * Delta t
 $
-I can use the variation integrate over time. $dot(x)$ is in meter at second, if i multiply it for the time (seconds) i obtain the variation of the position in meter.
 
 #informally()[
-  If i want to predict the position of the robot after a certain time i need:
-  - The current pose of the robot
-  - The controls that i want to apply to the robot
-  - The time that i want to apply the controls
-  - And the kimematic model of the robot, that is the equation that i have just written. Also they consider the movement constraint of the robot, that is the non-holonomic constraint.
+  To predict the position of the robot after a certain time, we need:
+  - The current pose of the robot.
+  - The controls applied.
+  - The duration $Delta t$ of the action.
+  - The kinematic model of the robot (the equations above).
 ]
 
-== Motion model
+This geometric description is mathematically sound, but one crucial aspect of reality is missing: *the errors! The noise!* When a real robot moves, wheel rotations are not perfect, they can slip, radii might slightly differ, and the floor is not perfectly flat. We are not in a videogame.
 
-The previous model can't describe the robot. *It's note consider the noise*, when the robot has wheels that rotate are not perfect, they can slip, they can have a different radius, the robot can be on a surface that is not flat, etc.
+== Motion Models (Probabilistic)
 
-A motion model it describe the relation between the current pose $s_(t-1)$ the control action $u_t$ and next pose $s_t$.It teels us how the are correlated and consider the noise.
-#note()[
-  The state or the pose is called now $s$, instead of $x$ as in previous lectures.
-]
-
-we could use kinematics:
-- *Forward kinematics*: Given $s_(t-1)$ and $u_t$ compute $s_t$ it's an easy problem
-- *Inverse kinematics*: Given $s_(t-1)$ and $s_t$ compute $u_t$ it's a hard problem, because we have the non-holonomic constraint, we can't move in any way to reach a particular configuration.\
-  It's a more interesting problem, because we want to now the control to tell at the robot to reach a particular configuration.
-
-Suppose a robot that teels us:
-- The current pose $s_(t-1)$
-- The control that we want to apply $u_t$
-
-
-=== Forward kinematics
-
-The motion models want to predict how confident we are about the next pose of the robot $s_t$.
-- The answer is a *score of confidence*, how plausible is that the robot is in a particular pose $s_t$ given the current pose and the control.
-  #note()[
-    We can use a score because we can renormalize it, we can make it a probability distribution.
-  ]
-
-- In the reality we want to give this answer to every possible pose $s_t$ and not only for a specific $s_t$.
-
-Using the forward kinematics we can say that the robot should be in $s_t^*$, the point predicted by the kinematic model. It's $s_t^*$ equal to $s_t$?:
-- No $->$ the answer is zero
-- Yes $->$ the answer is one
-
-it's seem that with this kind of knimetics *we are to confident about the next pose* of the robot, we can see that the final score of the robot is not a probability distribution.
+To address real-world physics, we enrich the previous model. A probabilistic motion model describes the relations between the current pose $s_(t-1)$, the control action $u_t$, and the next pose $s_t$, considering the noise.
 
 #note()[
-  This type of model is not very useful in robotics
+  Notation change: The state/pose is now called $s$ (e.g., $s_(t-1), s_t$), instead of $x$ as in previous lectures. The control action is $u_t$.
 ]
 
-=== Forward kinematics with noise
+There are two main instances of kinematics:
+- *Forward kinematics*: Given $s_(t-1)$ and $u_t$, compute $s_t$. It's a relatively easy problem.
+- *Inverse kinematics*: Given $s_(t-1)$ and $s_t$, compute $u_t$. It's a hard problem because of non-holonomic constraints (we can't just draw a straight line between two poses). However, it's very interesting because it's required for motion planning (telling the robot what to do to reach a goal).
 
-The question and parameters are the same of the previous model, but we want to consider the noise. We can use a *probability distribution* to represent the noise, for example a Gaussian distribution.
+=== Intuition: Forward Kinematics vs Probabilistic Evaluation
 
-- Using forward kinematics we can predict if the robot was in $s_(t-1)$ and we apply the control $u_t$ the robot should be in $s_t^*$.
+Suppose the robot assumes it is in a pose $s_(t-1)$ and executes a control action $u_t$. *How likely is it that it ends up in an arbitrary pose $s_t$?*
 
-- It's possible that due to the noise the comand $u_t$ made the robot is not in $s_t^*$ but in a different pose, for example $s_t$.
+The answer is a score (e.g., from 0 to 1), which we can normalize to get a probability distribution. The algorithm must provide an answer for *every* possible $s_t$.
 
-- How can assign a probability to $s_t$? We can measure the descrepancy (or the distance) between $s_t$ and $s_t^*$. Let's call this distance *$Delta$*:
-  - $Delta = 0$ if the distance between $s_t$ and $s_t^*$ is zero, so the robot is in the predicted pose, so we are very confident that the robot is in $s_t$.
+If we rigidly use pure forward kinematics:
+- The model predicts the robot should be exactly in $s_t^*$.
+- Is the evaluated pose $s_t$ equal to $s_t^*$? If no $-> 0$. If yes $-> 1$.
+This approach is too sharp and rigid. It doesn't represent reality, so it's practically useless in modern robotics.
 
-  - $Delta$ is bigger if the distance between $s_t$ and $s_t^*$ is bigger, so we are less confident that the robot is in $s_t$.
+*Forward kinematics with noise:*
+It is possible that, due to noise, the command $u_t$ places the robot in $s_t$ instead of the ideal $s_t^*$. How can we assign a probability to this?
 
-If $Delta$ is small the probability should be high, if $Delta$ is big the probability should be low. The bigger is the descrepancy between $s_t$ and $s_t^*$ the less confident we are that the robot is in $s_t$. To compute this we need to calculate:
-$
-  p(Delta)
-$
+We must measure the discrepancy (the distance) between the evaluated pose $s_t$ and the ideal predicted pose $s_t^*$. Let's call this discrepancy $Delta$:
+- If $Delta$ is small, the probability should be high.
+- If $Delta$ is big, the probability should be low, because very large errors are unlikely.
 
-//riguardare
+How can we compute this? We feed $Delta$ into a probability density function $p(Delta)$ that has its maximum at $0$ and decreases as we get further away. This naturally points to a *Gaussian distribution*.
+
+#note()[
+  The core task of the motion model is to build an explanation of the movement that is consistent with reality!
+]
+
 #example()[
-  Suppose that the robot is snaped with the grid, it can move right or left. The robot can move right in the next cell.
+  Suppose the robot operates on a 1D grid. It can move right to the next cell.
+  In our simulation, we try to mimic reality by adding Gaussian noise: most of the time the robot moves exactly 1 cell as commanded, but sometimes it moves 0 cells or 2 cells. The average error is zero, but errors will still happen with a certain probability.
 
-  The robot has a distance sensore, it tells the distance between itself and a landmark in the plane. The distance is given in number of cells to simplify the prolem.
+  The Gaussian always has a mean of zero ($mu = 0$), but we can choose the standard deviation ($sigma$):
+  - If we choose a small standard deviation, the model is very confident about the next pose.
+  - If we choose a large standard deviation, the model is less confident (high uncertainty).
 
-  In our demo we try to simulate the reality, we add a gausian noise, most of the time the robot is moved by 1 cell the next cell, but sometimes the robot is moved by 0 cell or by 2 cells. The avarege is zero but it will still be errors with some probability that affect the avarage.
+  In reality, the robot executes: movement = $1 + "sample"(N(0, sigma^2))$.
 
-
-  the gaussian always have a mean of zero, but i can choose the standard deviation, if i choose a small standard deviation the robot is more confident about the next pose, if i choose a big standard deviation the robot is less confident about the next pose.
-
-  The robot in reality we do $mu = 1$ plus a random number that is sampled from a gaussian with mean zero and standard deviation $sigma$.
-
-  the black lane is before taking measurements, the blue lane is after taking measurements.
-
-  the green vertical line is the real postion of the robot. The blue curve is the prostirior.
-
-  - In the first row we can see that the sensore is pretty accurate, the robot belief it can be anywere. The black lane become the blue line beacuse of the correction that the filter has made.
-
-  - at step twenty the robot was able to track how the position changes
-
-  In the second example the robot has a huge noise that seems is a kindnapped robot. THe movement is not tell me any clue, the sensor even if it is very perfect can't tell me anything about the position of the robot, so the belief is pretty much the same as before taking measurements.
-
-  In the third example we have a blind robot, as a perfect motion model but a very bad sensor, the robot is pretty much lost, the belief is pretty much the same as before taking measurements:
-  - The model after two step can predict the correct side in which the robot is
-
-  - But the sensor is not able to give us any clue about the position of the robot, so the belief is pretty much the same as before taking measurements.
-
-
-
-
-
-
-
-
+  During a Bayes Filter update (predict + correct with a sensor):
+  - *Good Sensor:* If the sensor is accurate, the posterior belief (blue curve) will sharply peak around the true position, correcting the uncertainty of the motion model. By step 20, the robot perfectly tracks its position.
+  - *Kidnapped Robot (Huge Noise):* If the motion is completely random/unreliable, the motion model gives us no clues. Even with a perfect sensor, recovering the position is difficult.
+  - *Blind Robot:* If the robot has a perfect motion model but a very bad sensor, the belief just shifts forward following the prediction, but gradually flattens out because there are no sensor measurements to correct the accumulated uncertainty.
 ]
