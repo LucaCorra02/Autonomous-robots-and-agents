@@ -50,4 +50,5 @@
 
 #include "chapters/rotations.typ"
 #include "chapters/Lezione4.typ"
+#include "chapters/Lezione5.typ"
 #include "chapters/Lesson6.typ"
