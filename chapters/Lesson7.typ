@@ -1,6 +1,5 @@
 #import "../template.typ": *
 
-= Lesson 7: Action Models and the Bayes Filter
 
 When checking if a sensor is reliable, even if the True Negative Rate ($"TNR"$) is $0.5$, the system still gets to the true state using the Bayes/bias filter, just a bit slower. This shows how powerful the formula is.
 
@@ -10,21 +9,21 @@ When checking if a sensor is reliable, even if the True Negative Rate ($"TNR"$) 
 
 Luckily, real robots rarely use just one sensor. We can guess a value using multiple sensors at the same time, each with its own likelihood. The formula is the same, but we expand it to include all the sensors together.
 
-== 1. Modeling Control Actions
+== Modeling Control Actions
 
 The standard Bayes filter works great for sensor measurements, but just looking at the world doesn't change it. To build a real robot, we need to update our math to include *control actions*, because when a robot does something, it changes the environment.
 
 Since an action $u$ modifies the state of the system $x$, we have a totally different problem: we need to write down the math for how an action affects a state so we can add it to the Bayes filter.
 
 #note()[
-  This is super important because, just like the information collected by a measurement is uncertain, the physical effects that an action produces on the state are uncertain too. 
-  Actually, actions are even worse: differently from measurements, they *increase* the uncertainty about the state (e.g., because of mechanical noise like wheels slipping). Luckily, we can use conditional probability to model these actions too.
+  This is super important because, just like the information collected by a measurement is uncertain, the physical effects that an action produces on the state are uncertain too.
+  Actually, actions are even worse: differently from measurements, they *increase the uncertainty* about the state (e.g., because of mechanical noise like wheels slipping). Luckily, we can use conditional probability to model these actions too.
 ]
 
-To describe the effect of taking an action $u$ on the state $x$, we could start by thinking of a *transition function* $f(x, u)$. This function takes the current state $x$ and the action $u$, and gives us the next state of the system. 
+To describe the effect of taking an action $u$ on the state $x$, we could start by thinking of a *transition function* $f(x, u)$. This function takes the current state $x$ and the action $u$, and gives us the next state of the system.
 
 #warning()[
-  In the real world, using a simple deterministic function has a big problem. A normal math function always gives back one specific value. But in reality, the world is random (stochastic): doing the exact same action can lead to different results because of noise.
+  In the real world, using a simple deterministic function has a big problem. A normal math function always gives back one specific value. But in reality, the world is random (stochastic): doing the exact *same action* can lead to *different results* because of noise.
 ]
 
 To fix this issue, we swap the simple function with a *probability distribution* of all the possible future states, also called a *motion model* in mobile robotics:
@@ -36,22 +35,29 @@ This conditional probability is just a smart way to write a function with three 
 - $x_(t-1)$: the previous state (where the robot started).
 - $x_t$: the arrival state (the new state we are checking).
 
-Explicitly representing this using a graph (with nodes for states and edges for probabilities like $p(x_t = x_2 | x_(t-1)=x_4, u_t = u_1)$) is highly inefficient and impossible to keep in memory for continuous spaces. In practice, this is implicitly expressed by action/motion equations with some noise added to them.
+We can represent this as a *graph*, where the nodes are states and the edges are probabilities e.g:
+$
+  p(x_t = x_2 | x_(t-1)=x_4, u_t = u_1)
+$
+but this approach is highly $mr("inefficient")$ and impossible to keep in memory for continuous spaces.
 
-To compress it, we have to pick a probability shape that is simple, works well with math, and does a good job representing real-world noise. 
+In practice, this is implicitly expressed by action/motion equations with some noise added to them. To compress it, we have to pick a probability shape that is simple, works well with math, and does a good job representing real-world noise. The best choice is the *Gaussian distribution* (or Normal distribution), which is a bell-shaped curve defined by its mean $mu$ and standard deviation $sigma$. Gaussians are really nice to work with: if you do math on a Gaussian, you almost always get another Gaussian out. Plus, it saves a ton of memory, because we *only need two parameters* to define the whole thing: mean $mu$ and standard deviation $sigma$.
 
-That's why everyone uses the *Normal (Gaussian) distribution*. Gaussians are really nice to work with: if you do math on a Gaussian, you almost always get another Gaussian out. Plus, it saves a ton of memory, because we only need two parameters to define the whole thing: mean $mu$ and standard deviation $sigma$.
+=== The Revised Markov Assumption
 
-== 2. The Revised Markov Assumption
-
-To make things even simpler, it helps to draw out what causes what using arrows:
+To make things even simpler, it helps to draw out the dependencies between all the variables in our problem:
 $
   A -> B, "A influences B"\
   B <- A, "B depends on A"
 $
-Looking at the current state $x_t$, we know it depends on the action we just took and the state right before it ($u_t -> x_t$).
-
-If our state doesn't include everything, just knowing the last state $x_(t-1)$ wouldn't be enough to guess $x_t$. To fix this without having to remember the whole history of the robot, we use the *Markov Assumption*. This implies that the current state is a perfect summary of everything that happened in the past. 
+Looking at the current state $x_t$, we know it depends on the action we just took and the state right before it ($u_t -> x_t$). If our state doesn't include everything, just knowing the last state $x_(t-1)$ wouldn't be enough to guess $x_t$. To fix this without having to remember the whole history of the robot, we use the *Markov Assumption*. This implies that the *current state* is a *perfect summary* of everything that happened in the past. Given the past state $mg(x_(t-1))$:
+$
+  u_(t-1) -> mg(x_(t-1)) -> z_(t-1)
+$
+with the assumption, we can say that the current state $mg(x_t)$ it's only influenced by the previous state $x_(t-1)$ and the action $u_t$ we just took:
+$
+  u_t, x_(t-1) -> mg(x_t) -> z_t
+$
 
 By using this Markov assumption over and over, we can drop all the useless history and make our formulas way simpler:
 
@@ -67,16 +73,16 @@ Even though these simplifications are great, they rely on a couple of implied as
 
 #figure(
   image("/assets/gaussian_motion_heatmap.png", width: 50%),
-  caption: [A 2D visualization of the motion model $p(x_t | x_(t-1), u_t)$. The probability of landing exactly where intended is high (the yellow peak). The further away you go, the probability drops fast.]
+  caption: [A 2D visualization of the motion model $p(x_t | x_(t-1), u_t)$. The probability of landing exactly where intended is high (the yellow peak). The further away you go, the probability drops fast.],
 )
 
-To put it all together, we also need a *prior*: $p(x)$, which is just what we believe about the world before we take any new measurements. 
+To put it all together, we also need a *prior*: $p(x)$, which is just what we believe about the world before we take any new measurements.
 Our main goal is to compute the *posterior*—our updated belief after everything happens:
 $
   "Bel"(x_t) = p(x_t | u_(1:t), z_(1:t))
 $
 
-== 3. Formal Bayes Filter Derivation (Not in Exam)
+=== Formal Bayes Filter Derivation
 
 The main problem is figuring out the belief of state $x_t$, knowing the whole history of measurements and actions:
 $
@@ -108,9 +114,9 @@ $
 $
 
 #example()[
-  To give a real example, let's say we want to find the probability that the robot is in state $x_t = 5$ (Room 5). 
-  - The part $p(z_t | x_t)$ tells us the likelihood of getting the current sensor reading if the robot is actually in Room 5. 
-  - The integral handles the motion: based on our previous belief that we were in Room 1, and knowing we did action $u_t$ (move to the next room), what's the probability we actually ended up in Room 5? 
+  To give a real example, let's say we want to find the probability that the robot is in state $x_t = 5$ (Room 5).
+  - The part $p(z_t | x_t)$ tells us the likelihood of getting the current sensor reading if the robot is actually in Room 5.
+  - The integral handles the motion: based on our previous belief that we were in Room 1, and knowing we did action $u_t$ (move to the next room), what's the probability we actually ended up in Room 5?
   - Finally, we multiply everything together and normalize it with $eta$ so the total probability is exactly $1$.
 ]
 
@@ -122,22 +128,29 @@ Even though the formula looks nice, calculating the exact belief with complex sh
 
 This specific version is called the *Kalman Filter*. In most robotics, this Gaussian assumption is a perfect sweet spot between computing speed and being accurate enough for the real world.
 
-=== 3.1 The Two-Step Algorithm: Predict & Correct
+=== Bayes Filter Algorithm
 
 If we turn this math into code, we get a recursive, two-step process that keeps updating our belief about the world: *Prediction* and *Correction (Update)*.
 
-In a discrete world, the scary integral just becomes a simple sum over all the possible states $x_t$. 
-
-1. *Prediction Step* ($overline("Bel")$):
-$
-  overline("Bel")(x_t) = sum_(x_(t-1)) p(x_t | x_(t-1), u_t) * "Bel"(x_(t-1))
-$
 #note()[
-  The $overline("Bel")$ computes what is the belief about the current state considering *only* the action the robot has just taken. In the context of mobile robotics, this is essentially *probabilistic dead reckoning*. It calculates the probability of being in $x_t$ using only the motion model, ignoring sensors.
+  In a discrete world, the scary integral just becomes a simple sum over all the possible states $x_t$.
 ]
 
-2. *Correction Step* (Update):
-$
-  "Bel"(x_t) = eta * p(z_t | x_t) * overline("Bel")(x_t)
-$
-In this last step, we ask: how does such a belief change when the observation at time $t$ is factored in? We multiply the prediction ($overline("Bel")$) by the sensor's likelihood, and scale it with $eta$ to get our new, final belief.
+#pseudocode(
+  [*Input*: $"Bel"(x_(t-1)), u_t, z_t$],
+  [*Output*: $"Bel"(x_t)$],
+  [*for* all $x_t$ do _$mo("Prediction step")$_],
+  indent(
+    [$overline("Bel")(x_t) = sum_(x_(t-1)) p(x_t | x_(t-1), u_t) * "Bel"(x_(t-1))$],
+  ),
+  [*for* all $x_t$ do _$mb("Correction step")$_],
+  indent(
+    [$"Bel"(x_t) = eta * p(z_t | x_t) * overline("Bel")(x_t)$],
+  ),
+  [*return* $"Bel"(x_t)$],
+)
+
+Where the:
+1. *$mo("Prediction Step")$* ($overline("Bel")$): computes what is the belief about the current state considering *only* the action the robot has just taken. In the context of mobile robotics, this is essentially *probabilistic dead reckoning*. It calculates the probability of being in $x_t$ using only the motion model, ignoring sensors.
+
+2. *$mb("Correction Step")$* (Update): In this last step, we ask: how does such a belief change when the observation at time $t$ is factored in? We multiply the prediction ($overline("Bel")$) by the sensor's likelihood, and scale it with $eta$ to get our new, final belief.
