@@ -9,7 +9,7 @@ When checking if a sensor is reliable, even if the True Negative Rate ($"TNR"$) 
 
 Luckily, real robots rarely use just one sensor. We can guess a value using multiple sensors at the same time, each with its own likelihood. The formula is the same, but we expand it to include all the sensors together.
 
-== Modeling Control Actions
+= Modeling Control Actions
 
 The standard Bayes filter works great for sensor measurements, but just looking at the world doesn't change it. To build a real robot, we need to update our math to include *control actions*, because when a robot does something, it changes the environment.
 
@@ -43,7 +43,7 @@ but this approach is highly $mr("inefficient")$ and impossible to keep in memory
 
 In practice, this is implicitly expressed by action/motion equations with some noise added to them. To compress it, we have to pick a probability shape that is simple, works well with math, and does a good job representing real-world noise. The best choice is the *Gaussian distribution* (or Normal distribution), which is a bell-shaped curve defined by its mean $mu$ and standard deviation $sigma$. Gaussians are really nice to work with: if you do math on a Gaussian, you almost always get another Gaussian out. Plus, it saves a ton of memory, because we *only need two parameters* to define the whole thing: mean $mu$ and standard deviation $sigma$.
 
-=== The Revised Markov Assumption
+== The Revised Markov Assumption
 
 To make things even simpler, it helps to draw out the dependencies between all the variables in our problem:
 $
@@ -128,7 +128,7 @@ Even though the formula looks nice, calculating the exact belief with complex sh
 
 This specific version is called the *Kalman Filter*. In most robotics, this Gaussian assumption is a perfect sweet spot between computing speed and being accurate enough for the real world.
 
-=== Bayes Filter Algorithm
+== Bayes Filter Algorithm
 
 If we turn this math into code, we get a recursive, two-step process that keeps updating our belief about the world: *Prediction* and *Correction (Update)*.
 
