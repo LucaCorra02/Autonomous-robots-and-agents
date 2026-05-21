@@ -1,32 +1,23 @@
 #import "../template.typ": *
 
-== Bayes Filter
-
-The Bayes filter allows a robot to estimate the state of a dynamical system while considering evidence from sensor measurements. In practice, the continuous Bayes filter is a theoretical abstraction: computing the exact posterior requires evaluating an integral over a continuous state space, which lacks a closed-form solution for arbitrary probability distributions. 
-
-The two main equations are:
-
-- *Prediction:* $overline(B e l)(x_t) = integral p(x_t | u_t, x_(t-1)) B e l(x_(t-1)) d x_(t-1)$
-- *Correction:* $B e l(x_t) = eta p(z_t | x_t) overline(B e l)(x_t)$
-
-To implement this on actual hardware, we must restrict the representation of the belief. Why do we often use a Gaussian distribution? Because it emerges naturally from many real-world scenarios and is mathematically convenient: the Gaussian is the "black hole" of distributions, and the intractable integral turns into efficient linear algebra.
-
-#note()[
-  *Parametric method*: representing the belief using a synthetic description given by mathematical parameters (e.g., mean $mu$ and covariance $Sigma$ of a Gaussian). Examples include the Kalman Filter and the Extended Kalman Filter (EKF).
+#informally()[
+  The Bayes filter allows a robot to estimate the state of a dynamical system while considering evidence from sensor measurements. In practice, the continuous Bayes filter is a theoretical abstraction: computing the exact posterior requires evaluating an integral over a continuous state space, which lacks a closed-form solution for arbitrary probability distributions.
 ]
 
-Another method, instead of the standard parametric approach, is the *Particle Filter* (a non-parametric method).
-The idea is to approximate the continuous probability density function using a finite set of samples (called particles). The algorithm simulates the motion for each particle and assigns weights using the measurement model.
+To implement this on actual hardware, we must *restrict the representation of the belief*. To achive this, we can have two main approaches:
+- *Parametric methods*: We assume that the belief can be represented by a specific family of probability distributions (e.g., Gaussian), and we only need to estimate the parameters of that distribution (e.g., mean $mu$ and covariance $Sigma$). Examples include the Kalman Filter and the Extended Kalman Filter (EKF).
 
-#warning()[
-  In this case, the real bottleneck is the number of particles we can maintain. The more particles we have, the better the approximation of the belief, but the higher the computational cost.
-]
+- *Particle Filter* (a non-parametric method): The idea is to *approximate* the continuous probability *density function* using a finite set of samples (called particles). The algorithm simulates the motion $p(x_t| u_t, x_(t-1))$ for each particle and assigns weights using the measurement model $p(z_t | x_t)$.
 
-Other notable implementations include: Unscented Kalman Filter (UKF), Information Filter, Histogram Filter, Partially Observable Markov Decision Processes (POMDP), and Hidden Markov Models (HMM).
+  #warning()[
+    In this case, the real bottleneck is the number of *particles* we can maintain. The more particles we have, the better the approximation of the belief, but the higher the computational cost.
+  ]
+
+  Other notable implementations include: Unscented Kalman Filter (UKF), Information Filter, Histogram Filter, Partially Observable Markov Decision Processes (POMDP), and Hidden Markov Models (HMM).
 
 == Robot Motion Component
 
-We talked about action models, but what does that imply in practice? 
+We talked about action models, but what does that imply in practice?
 In a Bayes filter, we need to predict the effect of the actions of the robot. Here, actions are motions. We need a model to predict the next state.
 
 Let's consider a *differential drive robot*: a robot with two wheels that can rotate at different speeds. By applying a difference in the speed of the two wheels, we can make the robot turn or describe circumferences.
@@ -40,7 +31,7 @@ We represent the position of the robot with a pose $s = (x, y, theta)$ in a glob
 
 #figure(
   image("/assets/differential_drive_robot.png", width: 50%),
-  caption: [Geometric parameters and controls of a differential drive robot.]
+  caption: [Geometric parameters and controls of a differential drive robot.],
 )
 
 *Skid steering*: when two or four actuated wheels on the same side are coupled (they receive the exact same control), allowing the robot to rotate.
@@ -63,13 +54,13 @@ Possible motions include:
 
 === Velocity Constraints and Non-Holonomic Systems
 
-Given a specific configuration, can we choose to apply an *arbitrary* velocity to the robot? 
+Given a specific configuration, can we choose to apply an *arbitrary* velocity to the robot?
 *NO!*
 
 1. The robot has a maximum velocity (physical motor limits).
 2. Imagine a car: you cannot apply a velocity that starts from the side door. The vehicle is constrained by its physical structure; it cannot move sideways.
 
-What happens if we integrate a velocity? We obtain a position. But can this constraint on velocity be integrated into a strict constraint on the final configuration? 
+What happens if we integrate a velocity? We obtain a position. But can this constraint on velocity be integrated into a strict constraint on the final configuration?
 No, the constraint on velocity cannot be integrated to reduce the reachable workspace. This is called a *non-holonomic constraint*.
 
 #informally()[
@@ -80,7 +71,7 @@ Most wheeled robots are non-holonomic (e.g., cars with Ackermann steering). If w
 
 === Transition Equations
 
-How does the pose change in time? 
+How does the pose change in time?
 Formally, to describe an object that changes over time, we use the *derivative*. We can compute the derivative of $x, y, theta$ (denoted as $dot(x), dot(y), dot(theta)$) as a function of the controls $omega_R, omega_L$ given these simple trigonometric formulas:
 
 $
@@ -89,7 +80,7 @@ $
   dot(theta) = R/L * (omega_R - omega_L)
 $
 
-The $dot(x)$ tells us: if we apply the controls, how much does the position change in that instant? 
+The $dot(x)$ tells us: if we apply the controls, how much does the position change in that instant?
 If we want to use this equation to predict where the robot will be after a small time step $Delta t$, we approximate it using a discrete time model:
 
 $
@@ -132,7 +123,7 @@ The answer is a score (e.g., from 0 to 1), which we can normalize to get a proba
 
 If we rigidly use pure forward kinematics:
 - The model predicts the robot should be exactly in a specific theoretical pose $s_t^*$.
-- Is the evaluated pose $s_t$ equal to $s_t^*$? 
+- Is the evaluated pose $s_t$ equal to $s_t^*$?
   - If NO $-> 0$ (Impossible)
   - If YES $-> 1$ (Certain)
 This approach is too sharp and rigid. It doesn't represent reality, so it's practically useless in modern robotics.
