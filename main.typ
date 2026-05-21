@@ -9,7 +9,7 @@
   subtitle: "Unimi - Master's Degree in Computer Science",
   authors: (
     ("Luca Corradini", "https://github.com/LucaCorra02"),
-    ("Giacomo Comitani", "https://github.com/comitanigiacomo")
+    ("Giacomo Comitani", "https://github.com/comitanigiacomo"),
   ),
   lang: "en", // or "it", IMPORTANT!
 
@@ -50,4 +50,6 @@
 
 #include "chapters/rotations.typ"
 #include "chapters/Lezione4.typ"
+#include "chapters/Lezione5.typ"
+#include "chapters/Lesson6.typ"
 #include "chapters/Lezione8.typ"
