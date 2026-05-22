@@ -144,3 +144,143 @@ When we linearize stuff we need to compute the derivative of the function, meani
 #warning()[
   The previus example show usa that we can't realay only on the internal mesurament of the robot, because the error accumulate over time. We need to combine the internal mesurament with the external mesurament, even if they are noisy, to get a good estimation of the pose of the robot.
 ]
+
+// Jack's notes
+
+== Likelihood fields (End-Point Sensor Models)
+
+//TODO: GRAPH NEEDS CORRECTION
+
+Unexpected obstacles are more probable to generate small sensor readings. This is because the longer the sensor beam, the larger the probability of encountering an obstacle along its path. This is why the probability distribution graph for unexpected objects initially descends (exponentially) and then suddenly drops at $z^*$.
+
+Remember that the likelihood field is a different perspective on sensor models compared to ray-casting. Instead of tracing a beam to find the exact intersection, it uses an end-point model.
+
+#informally[
+  Basically, if I measure a "hit" (a reading from a sensor like a lidar), I know that there must be an obstacle responsible for it in the environment. To explain the hit, we simply consider the closest obstacle in our map, and we give that closest obstacle the responsibility of generating the hit. So, we calculate the Euclidean distance from the hit point to the obstacles in the map and we take the closest one.
+]
+
+#example[
+  If I had a hit on the right of a mapped cube, I calculate the distances from the hit to all mapped objects. The cube will be the closest obstacle, so it is considered the responsible object for the hit.
+]
+
+Black areas in the likelihood map = no robot can have a hit in this position (e.g., inside solid obstacles).
+
+#note[
+  These probabilistic models are essential for the most common sensors used in robotics, such as laser rangefinders.
+]
+
+= Sensors
+
+== Proprioceptive sensors
+
+Robotics introspection, which basically measures values internal to the robot itself.
+
+#note(title: "Debate")[
+  Are the wheels of the robot considered part of the robot or the environment? 
+  *Yes*, they are part of the robot, so measuring their movement is proprioception.
+]
+
+=== Encoders (Odometry)
+These sensors measure the angular position and velocity of the wheels. 
+They can be optical, or use a magnet (magnetic encoders). They are used for low-level motor control and to infer the pose (position and orientation) of the robot through odometry, providing a first, albeit noisy, measurement of movement.
+
+#warning[
+  Odometry measurements should not be blindly trusted over long distances: they work assuming that there is no noise (no wheel slip, exact wheel diameter). Over time, the measurements accumulate errors and become very noisy.
+]
+
+If I just obtain the position using odometry (relying only on motion models), I keep moving while accumulating all the previous errors (a phenomenon called *dead reckoning*). Therefore, my final pose measurement will be awful and significantly drift from reality.
+
+=== Inertial Measurement Unit (IMU)
+Based on accelerometers and gyroscopes, an IMU returns linear accelerations, angular velocities, and orientation (often represented as quaternions or Euler angles). 
+They are frequently fused with encoders to mitigate dead reckoning drift (e.g., IMUs provide good rotational data where wheels might slip).
+
+=== System health diagnostics
+Monitors internal states like temperature or battery levels. Essential for power management, fault detection, and mission autonomy.
+
+== Exteroceptive sensors 
+
+Exteroceptive sensors measure information from the robot's surrounding environment.
+
+=== Sonar (Ultrasonic Sensors)
+They return the distance to the closest obstacle in a given direction using sound waves.
+They are very noisy and very inexpensive. This makes them very good for simple reactive tasks like obstacle avoidance, but not ideal for localizing complex features in the environment or building high-resolution maps.
+
+#note(title: "Kinematic Constraints")[
+  When avoiding obstacles, we must consider the robot's kinematics. A robot might be non-holonomic:
+  - *Ackermann steering*: The motion model that standard cars use. The direction is constrained (the front wheels pivot), which is why we have to do specific maneuvers (like parallel parking).
+  - *Non-holonomic robots*: Robots with kinematic constraints. The robot can theoretically reach any position in space, but it cannot move on any arbitrary trajectory (e.g., a car cannot instantly move sideways).
+  - *Holonomic robots*: By contrast, these can move instantaneously in any direction (like robots with omni-wheels).
+]
+
+=== Laser rangefinder (Lidar)
+Uses light beams to measure distances. Much more accurate and faster than sonars, but traditionally much more expensive. Excellent for mapping and localization.
+
+=== 3D Range Finders (3D Lidar)
+They are a 3D version of laser rangefinders, reading multiple beams across a solid angle. The value returned is represented by a point cloud. Very expensive, and processing the massive amount of data requires large computational power.
+
+=== GPS (Global Positioning System)
+Returns the global latitude and longitude of the robot. Works outdoors.
+The main problem is that in order to get a reliable reading, the receiver needs a clear line of sight to multiple satellites. This is not always guaranteed (e.g., robots surrounded by high buildings in "urban canyons", irregular walls, tree canopies, etc.).
+
+=== Cameras and Other Sensors
+- *Cameras (RGB)*: Provide rich visual data.
+- *Depth Cameras (RGB-D)*: Provide both an image and a depth map.
+- *Contact sensors*: Bumpers that detect physical collision with an object.
+
+= Localization and Filters
+
+== Gaussian Filters and Bayes Filter Implementation
+
+We need a continuous Bayes filter to represent the probability distribution (belief) of a robot's pose in a continuous environment.
+It tells us how to use motion models and sensing models to recursively propagate a belief state over time.
+
+To do that, we need to mathematically define such models. Specifically, we must compute the integral in the prediction step (incorporating the motion model) and apply Bayes' rule in the correction step
+
+== Kalman Filter
+
+#informally[
+  The Kalman Filter is a specific implementation of the Bayes filter. We pretend that the motion and sensing models are the simplest possible ones (linear). This is an approximation of the real world, but it gives priority to mathematical tractability. A way to elegantly solve the integral.
+]
+
+=== Gaussian Distribution
+We use Gaussian (Normal) distributions to model noise. 
+Gaussians have unique mathematical properties, making them the "black hole" of distributions (due to the Central Limit Theorem). However, they have limits: they are unimodal (can only represent a single hypothesis/peak).
+
+=== Three Key Assumptions:
+
+1. *Gaussian Prior*: My initial belief must be a Gaussian. I cannot choose an arbitrary shape for the prior, but I can choose its mean and variance: 
+   $ "Bel"(x_0) tilde cal(N)(mu_0, Sigma_0) $
+   If the initial state is totally unknown, I will choose a very wide Gaussian distribution (huge variance). If the initial state is perfectly known, I use a very narrow Gaussian.
+
+2. *Linear Motion Model + Gaussian Noise*: The transition from the previous pose to the next pose $x_t$ is a linear transformation plus some added noise. We replace complex kinematics with the simplest function: a line.
+
+3. *Linear Perception Model + Gaussian Noise*: The measurement $z_t$ is a linear transformation of the state plus Gaussian noise. In reality, this is rarely true, but we assume it to simplify things.
+
+*Conclusion*: With these three assumptions, the Bayes filter integral can be solved analytically. Prediction and correction steps become simple linear algebra (matrix multiplications), and the output belief is *always* strictly a Gaussian. We preserve the shape of the probability function forever.
+
+== Extended Kalman Filter (EKF)
+
+The EKF is historically one of the most used systems for localization in robotics.
+
+#warning[
+  The problem with the standard Kalman Filter was the linearity assumption. In the real world, robot kinematics and sensor geometries are *almost never* linear!
+]
+
+The Motion model is a non-linear transformation: instead of having linear matrices, we replace that part with a non-linear function $g$. 
+
+Because the functions are non-linear, pushing a Gaussian through them would distort its shape—we wouldn't know how the conditional probability is shaped, and it probably wouldn't be a Gaussian anymore.
+
+#informally[
+  *What do we do when we have something that is not linear? We linearize it.* \
+  Consider the non-linear function $g$. We linearize it locally around the current mean point (our best estimate) of the filter. 
+]
+
+This is called linearization, and it is achieved using a first-order Taylor expansion. To do this, I need to compute the derivatives of the functions with respect to the state variables. These matrices of partial derivatives are called *Jacobians*.
+
+In short: the EKF pretends that the world is linear, but only locally in a small region around the robot's current estimated position.
+
+#example(title: "Unicycle Model Example")[
+  A common non-linear motion model is the Unicycle model, described by a linear velocity $v$ and an angular velocity $omega$. It is called this because it behaves like a circus unicycle. This introduces trigonometric functions (sine and cosine), making the model strictly non-linear.
+]
+
+I cannot rely only on the motion model (as seen in the demo example, dead reckoning causes the uncertainty to grow to infinity). The EKF prediction step uses the unicycle model to move the belief, but we absolutely need the correction step (using exteroceptive sensors) to shrink the uncertainty back down.
