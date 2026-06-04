@@ -115,7 +115,7 @@ We can compute the *expected*, ideal *distance measurement*, denoted as $z^*$.
 We calculate $z^*$ via *ray casting/ray tracing*: we simulate the beam within the map and determine mathematically where it hits.
 
 #align(center)[
-  #image("/assets/ray_tracing.png", width: 45%)
+  #image("/assets/ray_tracing.png", width: 35%)
 ]
 
 In an ideal, *_noise-free_* scenario with zero uncertainty, the sensor would return exactly $z^*$. However, reality is imperfect. The actual measurement will likely be close to $z^*$, but affected by noise. This noise is caused by physical phenomena and _surprises_ that occur during the beam's flight.
