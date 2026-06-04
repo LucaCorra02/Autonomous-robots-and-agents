@@ -52,4 +52,4 @@
 #include "chapters/Lezione4.typ"
 #include "chapters/Lezione5.typ"
 #include "chapters/Lesson6.typ"
-#include "chapters/Lezione8.typ"
+#include "chapters/Lezione9.typ"
