@@ -182,39 +182,74 @@ To solve this problem, we *linearize* the non-linear functions locally around ou
 
 We use first-order Taylor expansion to compute the linear approximation. This requires computing derivatives of the functions with respect to state variables. The resulting matrices of partial derivatives are called *Jacobians*.
 
-**Result**: The EKF locally approximates the non-linear system as linear, allowing us to use Kalman-style updates in regions of small state changes.
-
-=== The Unicycle Model Example
-
-#example(title: "Unicycle Model")[
-  A classic non-linear motion model is the Unicycle model for a two-wheeled robot:
-
-  Given linear velocity $v$ and angular velocity $omega$:
-  $
-    dot x = v cos(theta) \
-    dot y = v sin(theta) \
-    dot theta = omega
-  $
-
-  The trigonometric functions (sine and cosine) make this strictly non-linear. This is why the standard Kalman Filter cannot be applied directly—we must use the EKF.
+#align(center)[
+  #image("/assets/KalmanFilter.png", width: 50%)
 ]
 
-=== Practical Implications
+As we can see from the figure:
+- *Bottom-Right Panel* $p(x)$: Displays the initial state estimation. It shows a shaded Gaussian probability density function centered around a mean $mu$ (marked with an "x"). This represents the input uncertainty.
 
-**Dead Reckoning Problem**: If we rely only on the motion model (dead reckoning using odometry), uncertainty grows unboundedly over time, and our pose estimate diverges from reality.
+- *Top-Right Panel* $y = g(x)$: Illustrates the transformation space mapping the input to the output.
+  - The solid black curve represents the true, non-linear system or observation model, $g(x)$.
+  - The dashed straight line is the *Taylor approximation*, representing the linearization of $g(x)$ tangent at the specific point of the estimated mean $mu$.
 
-**Solution**: The EKF prediction step uses the motion model to move the belief forward, but we absolutely need the *correction step* with exteroceptive sensors (e.g., GPS, Lidar) to reduce uncertainty back down.
+- *Top-Left Panel* $p(y)$: Shows the resulting probability distributions mapped onto the y-axis.
+  - The *shaded, irregularly shaped area* represents the true probability density, $p(y)$. Because the function $g(x)$ is non-linear, this true output is geometrically distorted and is no longer a Gaussian bell shape.
+  - The *dashed Gaussian curve* represents the EKF approximation. By mathematically passing the input through the linear Taylor approximation instead of the actual non-linear curve, the EKF forces the output to remain a perfect, manageable Gaussian.
+
+
+The diagram visually highlights the fundamental compromise of the EKF:
+- $mg("pros")$: It simplifies complex, non-linear realities into manageable Gaussian models by linearizing around the current estimate
+- $mr("cons")$: Introduces an *approximation error*, which is clearly visible as the geometric discrepancy between the exact shaded distribution and the dashed EKF Gaussian.
 
 #example()[
+  The example aim to show the *Dead Reckoing Problem*, if we rely only on the motion model uncertainty grows over time, and our pose estimate diverges from reality. The EKF prediction step uses the motion model to move the belief forward, but we absolutely need the *correction step* with exteroceptive sensors (e.g., GPS, Lidar) to reduce uncertainty back down.
+
   *Demonstration scenario*:
   - Robot: Differential drive with wheel encoders and GPS sensor
+
   - We apply a sequence of control actions: go straight, turn left, curve right
 
-  **Dead reckoning alone**: The pose estimate continuously diverges from the true position because we only use the motion model and ignore the GPS measurements.
+  - The velocity model is non-linear (e.g., due to wheel slip, non-ideal kinematics), and the GPS measurements are noisy. To avoid the non-linearity of the velocity model, we use the EKF to linearize it around the current estimate.
 
-  **EKF with GPS fusion**: By combining the wheel encoders (motion model) with GPS measurements (correction), the EKF estimate stays very close to the true position. The sensor noise is handled appropriately, and the estimate remains reliable.
+  *Dead reckoning alone* (black line): The pose estimate continuously diverges from the $mg("true position")$ because we only use the motion model and ignore the GPS measurements.
+
+  *EKF with GPS fusion* ($mb("blue")$ line): By combining the wheel encoders (motion model) with $mr("GPS")$ measurements (correction), the EKF estimate stays very close to the true position. The sensor noise is handled appropriately, and the estimate remains reliable.
+
+  #align(center)[
+    #image("/assets/KalmanExample.png", width: 90%)
+  ]
 ]
 
-#warning()[
-  **Key Lesson**: We cannot rely solely on internal measurements (encoders). Errors accumulate over time. Combining internal measurements with external measurements (even noisy ones) through the EKF provides a robust, accurate pose estimate.
-]
+== Particle Filter
+
+They are a *non parmaetric* approach: instead of represent the posterior as a parametric distribution (like a Gaussian), we represent it as a set of discrete samples (*particles*). Particles are a set of random state samples form the posterior distribution, each with an associated weight representing its importance:
+$
+  {s_t^1,s_t^2, dots, s_t^n} tilde p(s_t | z_(1:t), u_(0:t))
+$
+
+Their main $mg("advantage")$ is that they can represent *arbitrary distributions*, including multimodal ones, without making strong assumptions about the underlying noise or system dynamics.
+
+Pseudocode for the particle filter algorithm:
+#pseudocode(
+  [*for* $i in {1,dots,n}$],
+  indent(
+    [$s_t^i <- "Sample"(p(s_t | s_(t-1), u_t))$ sample from the motion model],
+    [Compute the importance weight: $s_t^i : w_t^i = p(z_t | s_t^i)$],
+    [Add $<s_t^i, w_t^i>$ to the particle set],
+    [Perform importance resampling: $s_t^i$ is selected with probability proportional to $w_t^i$],
+  ),
+  [*end*],
+)
+By analyzing its steps:
+1. *Sample*: We generate new particles by sampling from the motion model distribution, which predicts how the state evolves based on the previous state and control input.
+
+2. *Weight*: For each particle, we compute an *importance weight* $w_t^i$ based on how well the predicted state explains the new measurement. This is done by evaluating the likelihood of the measurement given the particle's state $p(z_t | s_t^i)$.
+
+3. *Resample*: We perform importance resampling to focus on the most likely particles. Particles with higher weights are more likely to be selected for the next iteration, while those with low weights may be discarded.
+
+The final result is a new set of particles that approximates the posterior distribution after incorporating the latest measurement.
+
+
+
+
