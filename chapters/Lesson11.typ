@@ -237,10 +237,10 @@ Pseudocode for the particle filter algorithm:
     [$s_t^i <- "Sample"(p(s_t | s_(t-1), u_t))$ sample from the motion model],
     [Compute the importance weight: $s_t^i : w_t^i = p(z_t | s_t^i)$],
     [Add $<s_t^i, w_t^i>$ to the particle set],
-    [Perform importance resampling: $s_t^i$ is selected with probability proportional to $w_t^i$],
   ),
-  [*end*],
+  [Perform importance resampling: $s_t^i$ is selected with probability proportional to $w_t^i$],
 )
+
 By analyzing its steps:
 1. *Sample*: We generate new particles by sampling from the motion model distribution, which predicts how the state evolves based on the previous state and control input.
 
