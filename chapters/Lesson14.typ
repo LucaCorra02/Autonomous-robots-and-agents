@@ -1,9 +1,9 @@
-#import "template.typ": *
+#import "../template.typ" : *
 
 = Planning in Robotics and AI
 
 #informally(title: "What is Planning?")[
-  Remember that there is not a single, universally accepted definition of *planning*. Substantially, it can be viewed as one of the primary contact points between the fields of Robotics and Artificial Intelligence (AI). It is the process of computing a sequence of actions to achieve a specific goal.
+  Remember that there is not a single, universally accepted definition of *planning*. Substantially, it can be viewed as one of the primary contact points between the fields of Robotics and Artificial Intelligence (AI). Planning is where AI meets Robotics, and it's also where the boundaries between robots and agents blur. It is the problem of selecting a sequence of actions to achieve an assigned goal, and it is often formulated in terms of state spaces. A plan can be defined as a sequence of actions or a function determining which action to take (e.g., based on current state, current time, uncertainty, etc...).
 ]
 
 == Deterministic Planning
@@ -15,10 +15,17 @@ In a deterministic planning scenario, the problem is defined by three main compo
 
 In *deterministic planning*, the transition model is completely deterministic. This means that if the robot applies a specific action in a specific state, the next state is known with absolute certainty. There is no noise or uncertainty in the transition.
 
-Thanks to this assumption, we can represent the transition model simply as a mathematical function: $T: S times A -> S$. There is no randomness involved.
+Thanks to this assumption, we can represent the transition model simply as a mathematical function: $T: S times A -> S$. There is no randomness involved. It relies on a deterministic transition function $f(x,u)$, where the next state is fully predictable given the current state and action. The goal is to determine a sequence of (control) actions $u_1, u_2, ..., u_n$ that bring the robot from an initial state $x_s$ to a goal state $x_g$:
+
+$x_s -> x_1 = f(x_0, u_1) -> x_2 = f(x_1, u_2) -> ... -> x_g = f(x_(n-1), u_n)$
+
+#align(center)[
+  #image("/assets/deterministic_maze.png", width: 60%)
+]
+
 
 #note(title: "Why use deterministic models?")[
-  Sometimes it is highly convenient to assume that the world is deterministic. This assumption massively simplifies the planning process and works surprisingly well in many real-world robotic problems. 
+  Sometimes it is highly convenient to assume that the world is deterministic. This assumption massively simplifies the planning process and works surprisingly well in many real-world robotic problems. In robotics, very often reasoning in these terms is helpful, e.g., computing a global navigation plan.
 ]
 
 *How do we solve a deterministic problem formulated in these terms?*
@@ -34,40 +41,60 @@ If we represent this as a directed graph:
 - Each *node* is a state.
 - Each *arc* represents an action/transition.
 
+#align(center)[
+  #image("/assets/mdp_feedback_planning.png", width: 70%)
+]
+
 #note()[
   In this way, we can effectively capture and model the *uncertainty* of the real world.
 ]
 
 In deterministic planning, the resolution is a simple *sequence of actions* (a plan). But in this case, since we are not sure about the exact effect of every single action, a static sequence will fail. 
 
-Therefore, the real resolution is not a plan, but a *Policy* ($pi$). A policy dictates what action to take in *any* given state. The agent must constantly check the current state (feedback) before taking an action, because the current state is not calculated solely by the previous actions, but influenced by randomness.
+Therefore, the real resolution is not a plan, but a *Policy* ($pi: X -> U$) that, given a state $x in X$, returns the action to execute when the robot is in that specific state $pi(s)$. The agent must constantly check the current state (feedback) before acting, because the state is not calculated solely by the previous actions but is influenced by stochasticity. This approach assumes that the current state can always be observed.
 
-To solve these types of problems, we typically use *Markov Decision Processes (MDP)*.
+To solve these types of problems, we typically use *Markov Decision Processes (MDPs)*.
 
 = Path Search Algorithms
 
 == The A\* Algorithm
 
-The goal of A\* (A-star) is to find a path that satisfies two main criteria:
+#note(title: "Historical Context")[
+  In 1968, Nilsson, Hart and Raphael were faced with a practical problem with Shakey (one of the ancestors of today's mobile robots). The problem was calculating the shortest route to a destination on a grid map. The solution that the three scientists proposed is known as A\* (pronounced "A star"). It is an informed, best-first search algorithm.
+]
+
+#align(center)[
+  #image("/assets/a_star.png", width: 40%)
+]
+
+The goal of A\* is to find a path that satisfies two main criteria:
 1. It must bring the agent to the goal state.
 2. It must minimize a specific cost function (e.g., distance, time, energy).
 
-A\* is an informed search algorithm that searches among different possibilities by expanding the frontier on the nodes that minimize a specific evaluation function $f(n)$. Unlike the standard Breadth-First Search (BFS), A\* uses both the accumulated cost and an estimate of the remaining cost:
+The idea behind A\* is simple: perform a Uniform Cost Search (UCS), but instead of just looking at the accumulated costs $g$, consider the function $f(s) = g(s) + h(s)$. The algorithm selects for expansion the nodes on the border that minimize the function $f$.
 
-$ f(n) = g(n) + h(n) $
+#align(center)[ 
+  #image("/assets/astar_expansion_grid.png", width: 80%)
+]
 
-Where:
-- $g(n)$: The current exact cost to arrive at node $n$ from the start.
-- $h(n)$: The *heuristic*, which is the estimated cost to arrive at the goal from node $n$.
+Let's distinguish the components of $f(s)$:
+- $g(s)$: Indicates the exact accumulated cost along the path that arrives in state $s$ from the start.
+- $h(s)$: Indicates an estimate of the cost still to be spent to get to the goal along the optimal path: the *heuristic*.
 
 == Heuristics: Admissibility and Consistency
 
 To guarantee that A\* finds the optimal solution, the heuristic must possess certain mathematical properties.
 
 #theorem(title: "Admissibility")[
-  The heuristic should always be *optimistic*. This means it must *never overestimate* the true cost to reach the goal. 
-  $ h(n) <= h^*(n) $
-  where $h^*(n)$ is the true optimal cost from $n$ to the goal.
+  A fundamental property that a good heuristic must have is admissibility. A heuristic $h$ is admissible if for each possible state $s$, $h(s)$ does not overestimate the cost of the minimum path from $s$ to the goal. 
+  
+  In practice: the estimate must be optimistic!
+  $h(n) <= h^*(n)$
+  where $h^*(n)$ is the true optimal cost from $n$ to the goal. If this property does not hold, the search algorithm may not recognize the optimal path! A degenerate case (always admissible) is when the heuristic is always equal to 0, reducing A\* to a standard UCS.
+]
+
+#align(center)[
+  #image("/assets/heuristic_example.png", width: 90%)
 ]
 
 *State Space vs. Search Tree:*
@@ -77,55 +104,81 @@ It is a very important distinction to make when visualizing the algorithm:
 
 This distinction introduces the need for *pruning* (keeping a "closed list" of visited states so we don't explore them again). However, pruning introduces a risk: if we discard a path to a state, we might miss the optimal path.
 
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 1em,
+  image("/assets/admissibility_tree_example.png", width: 100%),
+  image("/assets/admissibility_tree_example2.png", width: 100%)
+)
+
 #theorem(title: "Consistency")[
-  A heuristic is consistent if, for every node $n$ and every successor $n'$ generated by an action $a$, the estimated cost of reaching the goal from $n$ is no greater than the step cost of getting to $n'$ plus the estimated cost from $n'$ to the goal:
-  $ h(n) <= c(n, a, n') + h(n') $
+  To solve the problems arising from pruning, we must ask the heuristic for a more stringent property than admissibility: consistency. Let $V$ and $U$ be two states connected by one action $a$. A heuristic $h$ is consistent if for every possible pair of states the following triangular inequality holds:
+  $h(V) <= c(V, a, U) + h(U)$
+  A consistent heuristic is also automatically admissible.
+]
+
+#align(center)[
+  #image("/assets/consistency_triangle.png", width: 40%)
+]
+
+#align(center)[
+  #image("/assets/consistency_triangle2.png", width: 70%)
 ]
 
 #warning(title: "Consistency and Pruning")[
-  Consistency is a stronger condition (a generalization) of admissibility. 
+  If we work with an Expanded List (EXL) to avoid duplicates (which is highly desired for efficiency), admissibility alone does not guarantee optimality! We might fail due to the EXL pruning.
   - If the heuristic is *consistent*, the algorithm will *always* find the optimal solution, even if we use a pruning rule (closed list).
-  - If it is admissible but *not* consistent, applying a pruning rule risks missing the optimal solution.
+  - If it is admissible but *not* consistent, applying the EXL risks prematurely cutting off the path to the optimal solution, as shown in the graphic example with the scissors on slide 11.
 ]
 
-A search algorithm like A\* typically provides strong mathematical guarantees:
-1. *Completeness:* If there is a goal state and a valid path to it (a solution to the problem exists), the algorithm will eventually find it at some point.
-2. *Optimality:* If it finds a solution, it is mathematically guaranteed to be the *optimal* solution.
-
-#note()[
-  These types of algorithms are still highly relevant in modern robotics precisely because of these strict mathematical guarantees.
+#align(center)[
+  #image("/assets/astar_exl_scissors.png", width: 70%)
 ]
+
+== Other Search Algorithms
+Within the family of state-space search algorithms, the slides summarize the following variants:
+- *Hill Climbing:* A DFS that breaks ties using the heuristic $h$.
+- *Beam Search:* A BFS, but once it has expanded all the nodes at depth $k$, it keeps at depth $k+1$ only the $w$ best nodes according to $h$.
+- *Iterative Deepening:* A DFS limiting the maximum depth sequentially to 1, then 2, then 3, etc.
+- *$"IDA"^*$ (Iterative Deepening A\*):* Uses the Iterative Deepening approach, but uses the $f$ value as a threshold instead of the depth.
+- *$D^*$*: An A\* algorithm executed backwards starting from the goal node, looking for a path to the initial node.
+- *Greedy Search:* Similar to A\* but adopts a simplified evaluation function based solely on the heuristic: $f(n) = h(n)$.
 
 = Advanced Solution Techniques
 
 == Multi-Robot Path Planning
 
-Multi-robot path planning involves computing the path (or multiple paths) that a fleet of robots should follow to complete a collective task. 
+Multi-robot path planning involves computing the path (or multiple paths) that one or more robots should follow to successfully complete a task. 
 
-The core challenge is dictating the actions of the robots cooperatively. We want to give the robotic system the capability to dynamically or pre-emptively answer the question: *"Where to go next?"* while avoiding interference.
+The core challenge is dictating the actions of the robots cooperatively. We want to give the robotic system the capability to dynamically or pre-emptively answer the question: *"Where to go next?"* while avoiding interference. 
+
+A classic example is *Time-optimal multi-robot path planning (MRPP)* on grid environments. This problem is proven to be *NP-hard* when restricting the planar graph to a 2D grid graph with holes/obstacles.
 
 == Multi-Agent Path Finding (MAPF)
 
-The objective of MAPF is to find optimal, *non-interfering* paths for multiple agents, each with a unique start and goal position, operating within a *known* environment.
+The objective of MAPF is finding optimal, *non-interfering* paths for multiple agents, each one with a unique start and goal position in a known environment. It is a challenging problem with several applications in both physical (real multi-robot systems, automated warehouses) and virtual (gaming, RTS) settings.
 
 *Formal MAPF Definition:*
-- We have $k$ agents.
-- Each agent has a specific *start location*.
-- Each agent has a specific *goal location*.
-- The *Environment* is represented as a set of nodes and edges, typically a graph $G = (V, E)$. This can be a linear graph, a 3D graph, etc., but most of the time it is represented as a grid map with obstacles (holes).
+Based on the standard definition by Stern et al. (2019), the problem consists of:
+- $k$ agents.
+- $k$ start locations.
+- $k$ goal locations.
+- An *Environment* represented as a generic graph $G = (V, E)$.
 
-For each agent, we have to calculate a continuous path from start to goal without breaking, getting stuck, or colliding.
+The objective is to calculate $k$ start $->$ goal paths ensuring the minimum sum of distances (optimality) and no vertex or edge collisions (no conflicts). The problem is inherently *NP-Hard* (J. Yu and S. LaValle, 2013).
 
-There are typically two main *objective functions* used to evaluate the quality of a MAPF solution:
-1. *Sum of Costs (SOC):* The sum of the distances/times each robot has covered.
-2. *Makespan:* Instead of the sum, we take the maximum. The cost is defined as the time at which the *last* robot completes its path (the maximum distance any single robot has covered). This treats the fleet of robots as a single cohesive subject and is often considered the more interesting objective function.
+#align(center)[
+  #image("/assets/mapf_definition_grid.png", width: 70%)
+]
+
+There are two main objective functions to evaluate a MAPF solution:
+1. *Sum of Costs (SOC):* The sum of the steps or time costs covered individually by each robot.
+2. *Makespan:* The time taken by the last robot to complete its path (i.e., the maximum of the individual costs).
 
 *Managing Conflicts:*
-Obviously, we do not want conflicts. If we discretize the environment into cells, we can increment a time step ($t + 1$) for every action. This allows the system to check if the next action will result in a collision.
-
-There are two basic types of conflicts (though more complex ones exist):
-1. *Vertex Conflict:* Two robots attempt to occupy the exact same cell (node) at the exact same time step.
-2. *Edge Conflict (Swapping):* Two robots attempt to traverse the exact same edge in opposite directions at the same time step (they want to swap places). 
+Considering time discretized into time steps ($t$), we define two basic types of conflicts:
+1. *Vertex Conflict:* Two agents attempt to occupy the same vertex $v$ at the exact same time step $t$.
+2. *Edge Conflict (Swapping):* Two agents attempt to traverse the same edge at the same time step proceeding in opposite directions (swapping places).
 
 #informally(title: "Kinematic and Safety Constraints")[
   Depending on the specific problem, certain movements might be restricted. For example, sometimes it is forbidden for agents to move "like a little train" (following each other immediately edge-by-edge without a time-step buffer). These are specific safety or kinematic constraints that must be integrated into the collision-checking logic.
@@ -133,94 +186,85 @@ There are two basic types of conflicts (though more complex ones exist):
 
 == Conflict-Based Search (CBS)
 
-Conflict-Based Search (CBS) is a popular, complete, and optimal algorithm for solving MAPF problems. Just like A\*, given enough time, it is guaranteed to find the optimal solution (non-interfering paths that minimize the chosen objective function). 
+Conflict-Based Search (CBS) is the most popular exact method in the literature for solving MAPF problems completely and optimally. CBS operates by performing a *two-level search*:
 
-#warning(title: "Computational Cost")[
-  The theoretical computational cost of CBS is very high. In order to guarantee the optimal solution, the algorithm might take an *exponential number of steps* in the worst-case scenario. It can be highly inefficient if there are massive bottlenecks. However, *in practice*, it works quite well and is remarkably efficient on average for most practical scenarios.
-]
-
-CBS operates by performing a *two-level search*:
-
-1. *Low-Level Search:* Computes an optimal plan for each agent *individually*. It typically runs A\* on the grid for a single agent, trying to find the shortest path from start to goal while strictly obeying a specific set of constraints provided by the high level.
-2. *High-Level Search:* Runs a Best-First Search (BFS) on a structure called the *Constraint Tree (CT)*. In this tree, each node represents a set of constraints that forbid specific agents from being at specific points (vertices or edges) at specific times. The low-level planner is called to find a solution that satisfies the constraints of the current high-level node.
+1. *Low-Level Search:* Computes an optimal plan for each agent *individually*, considering the set of constraints imposed by the high level. Typically, it runs an A\* algorithm on the grid for the single robot.
+2. *High-Level Search:* Runs a best-first search on a tree structure called the *Constraint Tree (CT)*, where each node represents a set of space-time interdictions (constraints) for the agents.
 
 === The Constraint Tree (CT)
 
 In the high-level search, a *CT Node* contains:
-- *A set of constraints:* These dictate what the agents *cannot* do. At the root node, this set is completely empty (agents plan as if they are alone in the environment).
-- *A Joint Plan:* A set of individual paths for all agents, computed by the low-level planner respecting the node's constraints.
-- *A Cost:* The total cost of the joint plan (e.g., sum of costs), used to order the Best-First Search queue.
+- *A set of constraints:* A set of restrictions (initially empty at the root of the tree).
+- *A joint plan with a cost:* A joint plan composed of the individual robot trajectories, calculated by the low-level planner respecting the node's constraints.
 
 === Node Expansion and Splitting Logic
 
-When the high-level search selects a node to expand, it evaluates the joint plan:
-- *No conflicts?* If the paths of all agents in the joint plan do not interfere, we are *Done*. The optimal solution has been found.
-- *Conflict detected?* Suppose there is a vertex conflict between agent $a$ and agent $b$ on vertex $v$ at time $t$. The algorithm must resolve this by *splitting* the node (and thus splitting the "search universe" into two disjoint universes).
+When the high-level search selects a node to expand:
+- *No conflicts?* If the current paths have no collisions, the algorithm is *Done* and has found the optimal solution.
+- *Conflict detected?* If a conflict is detected between agent $a$ and agent $b$ on vertex $v$ at time $t$, the node is divided (*Split*), generating two new child branches.
 
-When a conflict $(a, b, v, t)$ occurs, CBS generates two new child nodes, each adding a new constraint to the parent's set:
-1. *Child 1:* Adds the constraint "$a$ cannot occupy $v$ at time $t$". The low-level planner is re-run for agent $a$ to find a new path that respects this.
-2. *Child 2:* Adds the constraint "$b$ cannot occupy $v$ at time $t$". The low-level planner is re-run for agent $b$ to find a new path that respects this.
+#align(center)[
+  #image("/assets/cbs_split_tree.png", width: 70%)
+]
 
-By continually splitting universes upon finding conflicts and exploring the lowest-cost nodes first, CBS systematically guarantees finding the optimal collision-free joint plan.
+The two child nodes will respectively contain the following additional constraints:
+1. *Child 1:* Adds the constraint "$a$ cannot occupy vertex $v$ at time $t$". The low-level planner is re-run only for agent $a$.
+2. *Child 2:* Adds the constraint "$b$ cannot occupy vertex $v$ at time $t$". The low-level planner is re-run only for agent $b$.
 
 #note()[
-  Over the years, many improved versions and variants of CBS have been developed to speed up the search space exploration (e.g., ICBS, ECBS, CBSH), but the fundamental two-level structure remains the same.
+  Many improvements have been built on top of the basic algorithm, such as Improved Conflict-Based Search (ICBS) and its heuristic variant ICBS-h, which represents the state-of-the-art for CBS solvers.
 ]
 
 == Configurable MAPF (C-MAPF)
 
-Traditionally, MAPF assumes a static, strictly known environment. *Configurable MAPF (c-MAPF)* (or Co-design MAPF) introduces a new paradigm: what if we can move the robots, but *also* modify the graph that describes the environment?
+The C-MAPF framework extends the MAPF problem by introducing the configurability of the environment. Configurations capture the possibility of rearranging the topology of the environment itself, respecting certain constraints.
 
-In C-MAPF, we can modify the topology of the environment, not arbitrarily, but in specific, allowable parts. 
-- We might have the ability to open or close doors, change the direction of one-way lanes, or add/remove specific edges.
-- This introduces new *degrees of freedom*, but it is bound by a *budget* and physical constraints (e.g., you can only open up to 3 doors, or changing an edge costs a certain amount of energy/time).
+- *Typical Example:* A logistics warehouse where the shelves are placed on rails and can be moved to open or close aisles as needed.
+- Instead of a single static graph, we reason over a family of configurable environments $G_1, G_2, G_3, ...$.
 
-*The core question becomes:* What is the best configuration of the environment to choose in order to minimize the routing cost of the robots? 
-
-To solve this, we can try to *extend CBS* with this additional degree of freedom. The search algorithm must now branch not only on routing conflicts between robots, but also on the configuration choices of the topology. This is a very active and innovative area of research in robotic planning.
-
-#import "template.typ": *
+This introduces an additional dimension of complexity into the search space (C-MAPF simultaneously searches for an optimal map configuration and the $k$ collision-free paths within it).
 
 == Multi-Agent Pickup and Delivery (MAPD)
 
-In a Multi-Agent Pickup and Delivery (MAPD) scenario, we have an environment populated by multiple agents operating in *discrete time*. At each time step, an agent can either move to an adjacent vertex or stay at its current vertex. 
+In the MAPD scenario, the environment is modeled by a graph $G=(V,E)$ with agents $a_1, a_2, ..., a_m$ operating in *discrete time* (at each step an agent can move to an adjacent vertex or stay still). Unlike MAPF, the system manages a set of pending tasks $T = {tau_1, tau_2, ...}$ that arrive dynamically at runtime.
 
-Unlike standard MAPF, the system must process a dynamic set of *Tasks*. Each task specifies:
-- A pickup vertex $s_i$
-- A delivery (goal) vertex $g_i$
+Each task $tau_i$ specifies:
+- A pickup vertex $s_i$.
+- A delivery (goal) vertex $g_i$.
 
-Crucially, these tasks arrive dynamically at runtime (in a continuous stream $T$). Because we do not have the full specification of all tasks in advance, we cannot solve the entire problem offline before execution. Instead, we must solve it *online*.
-
-#informally(title: "Online Algorithms")[
-  Using an online algorithm means that the system must continuously track the state of what is happening on the network and react dynamically. The problem continuously unfolds at the exact same time the agents are executing their previously assigned tasks.
+#align(center)[
+  #image("/assets/mapd_task_graph.png", width: 50%)
 ]
 
-To manage this ongoing execution, the system must track the state of each agent:
-- *Free agents:* Agents that currently have no task assigned and are available.
-- *Busy agents:* Agents that are actively executing an assigned task.
+The system constantly monitors the operational state of the agents:
+- *Free agent:* A free agent with no assigned task.
+- *Busy agent:* An occupied agent that is executing an assigned task.
+
+A task is executed when the assigned agent moves from its current position $v$ towards $s_i$, and subsequently from $s_i$ to $g_i$. The quality of a global solution is evaluated through:
+- *Makespan:* The total number of steps required to complete all tasks in the list.
+- *Service time:* The average time that elapses between the arrival of a task in the system and its complete execution.
 
 #note()[
-  Conceptually, MAPD can be viewed as a further generalization of MAPF (and c-MAPF), adding the complexity of dynamic task assignment and ongoing, infinite-horizon execution.
+  MAPD represents a dynamic, online generalization of the classic MAPF problem.
 ]
 
 == Solving MAPD Problems: Token Passing
 
-While we won't dive into the low-level details of specific algorithms, we can understand the high-level logic used to solve MAPD through approaches like *Token Passing*.
+The *Token Passing (TP)* algorithm is a state-of-the-art online method for solving MAPD problems. TP iteratively assigns free agents to tasks and adds their collision-free paths to a shared data structure (a partial solution) called a *token*.
 
-Token Passing is a decentralized-style algorithm that iteratively assigns free agents to unassigned tasks. It maintains a partial, safe solution—a set of synchronized, collision-free paths for the currently planned agents—known as the *Token*.
+The algorithm follows a decentralized protocol where the token is passed to one free agent at a time:
+1. *Task Eligibility:* A task is considered eligible if its locations (both pickup and delivery) are not the final destinations of any other path already stored in the token.
+2. *Assignment and busy state:* If there are eligible tasks, the agent assigns itself to the task $tau$ at the minimum (estimated) distance from its current location. It adds to the token the trajectory to reach the delivery via the pickup, ensuring the absence of collisions with the paths already reserved by other robots, and becomes *busy*.
+3. *Safe Locations:* If there are no eligible tasks available, the agent plans a path to the nearest "safe location" to avoid blocking traffic or hindering the solutions of other operating agents, safely inserting this parking movement into the token.
 
-*How it operates:*
-1. *Task Eligibility:* A task is considered *eligible* to be assigned only if its pickup and delivery locations are NOT the final destinations of any other path currently stored in the Token.
-2. *Path Assignment:* Once a free agent is paired with an eligible task, the system computes a collision-free path for it (first to the pickup location, then to the delivery location). 
-3. *Path Computation:* For computing this specific path, we can act modularly and use *any* compatible pathfinding algorithm we want (e.g., A\* or CBS), as long as it respects the constraints of the paths already reserved in the Token.
-4. *Updating the Token:* The newly computed path is added to the Token, and the agent's status changes from free to busy.
+== Discussion: Planning with LLMs
 
-#warning(title: "The Core Challenge: Reactivity")[
-  The defining characteristic of solving MAPD is the absolute need to *react*. We have no advanced specification of the future. The planner must constantly adapt to new task specifications on the fly, ensuring that newly generated paths seamlessly integrate into the Token without causing collisions with ongoing operations.
+A topic of strong modern discussion concerns the possibility of performing deterministic planning coupled with Large Language Models (LLMs).
+
+#warning(title: "Position on LLM Reasoning")[
+  A clear and iconic academic position within the scientific community (shared by researchers at Arizona State University like S. Kambhampati) literally states: 
+  
+  *"POSITION: STOP ANTHROPOMORPHIZING INTERMEDIATE TOKENS AS REASONING/THINKING TRACES!"*.
+  
+  The autoregressive generation of text tokens (like the $A^*$ execution traces produced by models such as Searchformer) must not be confused with or anthropomorphized as a real reasoning process or algorithmic planning computation.
 ]
-
-== Discussion
-
-Can we do deterministic planning with an LLM?
-
-
