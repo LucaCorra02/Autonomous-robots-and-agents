@@ -25,7 +25,7 @@ The modern and mathematically robust approach is to use *Quaternions*. Quaternio
   - What are the coordinates of the object with respect to frame of reference $A$?
 
   #align(center)[
-    #image("assets/image.png", width: 60%)
+    #image("image.png", width: 60%)
   ]
 ]
 
