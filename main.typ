@@ -52,5 +52,10 @@
 #include "chapters/Lezione5.typ"
 #include "chapters/Lesson6.typ"
 #include "chapters/Lesson7.typ"
+#include "chapters/Lezione8.typ"
+#include "chapters/Lezione9.typ"
+#include "chapters/Lesson10.typ"
 #include "chapters/Lesson11.typ"
+#include "chapters/Lesson13.typ"
 #include "chapters/Lesson14.typ"
+

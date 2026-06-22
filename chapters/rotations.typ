@@ -160,6 +160,10 @@ A singularity is a point in our space where our parameterization starts behaving
 
 For example, using the ZYZ Euler parameterization, if we consider the rotation $alpha=0, beta=180° (pi), gamma=0$, the two $z$ axes become aligned (anti-parallel). The rotation matrix collapses and one of the coordinates loses meaning, making the inverse problem unsolvable. This specific event is called *Gimbal Lock*.
 
+#example()[
+  An example of Gimbal Lock is when a pilot is flying an airplane and the pitch angle reaches $90°$ (impossible). The plane can *no longer roll, because the roll axis is aligned with the yaw axis*. The pilot loses one degree of freedom in controlling the plane's orientation.
+]
+
 *Summary of the trade-off:*
 - *Rotation matrices*: inefficient (9 numbers), but *no singularities*.
 - *3-angles*: efficient (3 numbers), but *presence of singularities*.

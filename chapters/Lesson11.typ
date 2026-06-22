@@ -1,286 +1,229 @@
 #import "../template.typ": *
 
-When something like an obstacle enter in the fov of the robot, the probability to get an higher mesurament than $z^*$ should be zero, at least the mesurament is lower than $z^*$. Measuring a larger value similar to $z^*$ should be less probable than measuring a smaller value. For that reason we have an exponential distribution.
+== Sensors
 
-== Likelihood field
+Sensors are broadly classified into two categories: those measuring the robot's internal state (*proprioceptive*) and those measuring the environment (*exteroceptive*).
 
-We are not reasoning about the probability of the mesurament $z$ given the pose of the robot, but we are reasoning about the probability of the mesurament $z$ given the position of the obstacle.
+=== Proprioceptive Sensors
 
-The map is computed in this way:
-- I don't care about the pose and orentation of the robot.
-- I suppose that the robot sensor measures combine with his position and orientation give a mesurament $z$ (green dot)
-- I need to compute how probable is to get that mesurament $z$ given the position of the nearest obstacle (the responsible for that mesurament).
+Proprioceptive sensors measure values internal to the robot itself (robot introspection). Examples of these sensors include:
 
-=== Proprioceptive sensors
+- *Wheel encoders* (odometry): Measure the angular position and velocity of the wheels using optical or magnetic sensors. They provide low-level motor control and allow us to estimate the robot's pose (position and orientation) through odometry.
 
-#informally()[
-  it's something with come form the robot
-]
+  #warning[
+    Odometry measurements should not be blindly trusted over long distances. They work under the assumption of *no noise* (no wheel slip, exact wheel diameter).
 
-An example it's the wheel encoder, that measure the rotation of the wheel, and from that we can compute the distance traveled by the robot.
+    This is known as the *dead reckoning* problem: if we rely solely on odometry, our pose estimate will diverge significantly from reality over time (errors accumulate).
+  ]
 
-Another sensor is the *IMU* (Internal Measurment Unit), it can measure the linear acceleration, angular velocity, and magnetic field stenght. Resturns linear acceleration and angular velocity, that can be used to compute the pose of the robot (quaternions, roll, pitch, yaw).
+- *Inertial Measurement Units* (IMU): Measure linear acceleration, angular velocity, and orientation. IMUs are frequently fused with encoders to mitigate dead reckoning drift.
 
-We can also have system health sensors, that measure the temperature of the robot, the battery level, etc.
+- *System health diagnostics*: Monitor battery level, temperature, and other internal states.
 
-=== Exteroceptive sensors
+=== Exteroceptive Sensors
 
-#informally()[
-  it's something with come from the environment
-]
+Exteroceptive sensors measure information from the robot's environment. Examples of these sensors include:
 
-An example it's the sonar, that measure the distance to the nearest obstacle in a certain direction.
+- *Sonar* (ultrasonic) sensors: They measure distance to the *nearest obstacle* in a given direction using sound waves. They are very noisy and inexpensive, feature a wide FOV but short range (a few meters), and are excellent for reactive tasks like obstacle avoidance but poor for localizing features or building high-resolution maps.
+
+  #note()[
+    Sonar sensors don't tell us *where* obstacles are, just that they exist.
+  ]
+
+- *Laser rangefinders* (Lidar): They use light beams to measure distances with high precision. They are much more accurate and faster than sonar, traditionally more expensive (though costs have decreased recently), and are excellent for *mapping* and *localization*.
+
+- *3D range finders* (3D Lidar): These sensors extend laser rangefinders to three dimensions by reading multiple beams across a solid angle, returning a *3D point cloud* of the environment (a set of coordinate points in the sensor's reference frame).
+
+- *GPS* (Global Positioning System): Provides *global coordinates* (latitude and longitude) for outdoor localization. It requires a clear line of sight to multiple satellites, making it unreliable in urban canyons (surrounded by tall buildings), under tree canopies, or indoors.
+
+- *Cameras* (RGB): Capture visual information in 2D images.
+
+- *Contact sensors* (bumpers): Detect physical collisions with objects, essentially acting as binary switches.
+
 #note()[
-  They have a wide fov and short range. They not suitable for localization feature in the environment or builiding a map of the environment, but they are good for obstacle avoidance (tehy not tell us were the obstacle is).
+  Different sensors provide different types of information with varying accuracy, range, and cost. Effective robotic systems often combine multiple sensor types.
 ]
 
-If the robot has a constrait on the valocity that we can apply to the robot (the robot can move anywhere in the space, but with a contstrain on the way to reach that position), its a non holominic robot. the robot pi it's a holominic robot
+= Gaussian Filters for State Estimation
 
-Also *Laser RangeFinder* are in this category. They measure distances along a set of directions, very often along a plane. They are more expencive than the sonar, but they are more accurate and have a longer range. They are suitable for localization and mapping, but they are not good for obstacle avoidance (they tell us were the obstacle is, but they not tell us how to avoid it).
+To estimate a robot's pose in a continuous environment, we need a *continuous Bayes filter*. This probabilistic approach:
+1. Represents the robot's belief (confidence) about its current pose
+2. Uses motion models to predict pose changes
+3. Uses sensor models to correct predictions with measurements
+4. Recursively propagates this belief over time
 
-
-There are also *3d rangefinder*. They give us a 3d point cloud of the environment, for example a set of points coordinates referred to a reference frame placed on the sensor.
-
-ALso *cameras* are in this category. They give us a 2d image of the environment, that we can use to extract features, or to build a 3d model of the environment. We can also have bumpers, they are used to determine if the robot it's toching something, (they are like a binary switch).
-
-== Bayer Filter Implementation
-
-In reality we can only use a continuois bias filter where the belief its a simplify version (like a function).
-
-the first part is the perceptional model, the secon part is the motion model. We need a way to compute that probability, then we can only need to integrate them.
-
-if the two part are very complex form , solving the prediction step and the correction step can be very complex. We introduce the *Kalmn Filter*: I assume that motion and sensing model are very simple, enough that the prediction step becomes analytically tractable, we will get a formula to solve the integral.
-
-=== Gaussian distribution
-
-we can use a Gaussian distribution, a gaussian can represent a simple belif (with only a local maximum), and it can be easily manipulated mathematically.
-
-If we represent the belief as a Gaussian, with two numbers we can represent the belief over a milion of possible states.
-
-Kalmar filter has a lot of assumptions:
-
-1. The belief is represented as a Gaussian distribution $"Bell"(s_0) tilde N(mu_0, sigma_0^2)$. We can't choose the form of the prior, but we can *choose the parameters* of the prior (the mean and the variance). Initially the parameters are set to represent a very uncertain belief (a Gaussian with a very large variance).
-
-2. The *motion model* is a linera trasformation plus a Gaussian noise.
-  #note()[
-    It's a very strong assumption, because motion models are often non linear. In the reality it's not like that.
-  ]
-  The next pose of the robot $s_t$ it's a linear combination of the previous pose $s_{t-1}$ and the control input $u_t$, plus a Gaussian noise with zero mean and covariance $R_t$:
-  $
-    s_t = A_t s_(t-1) + B_t u_t + epsilon_t tilde N(0, r_t)
-  $
-  where $A_t$ and $B_t$ are matrices that depend on the time step $t$.\
-  The all thing are rappresented with a Gaussian with mean $A_t s_(t-1) + b_t u_t$ and variance $R_t$ (the noise variance).
-
-3. The *perception model* is a linear trasformation plus a Gaussian noise.
-  #note()[
-    It's a very strong assumption, because perception models are often non linear. In the reality it's not like that.
-  ]
-  The mesurament $z_t$ it's a linear combination of the pose of the robot $s_t$, plus a Gaussian noise with zero mean and covariance $Q_t$:
-  $
-    z_t = C_t s_t + delta_t tilde N(0, q_t)
-  $
-  where $C_t$ is a matrix that depend on the time step $t$.\
-  The all thing are rappresented with a Gaussian with mean $C_t s_t$ and variance $q_t$ (the noise variance).
-
-=== Kalman Filter
-
-Kalmar filter now become a trivial linear algebra problem in repsect of intefral, we can solve the prediction step and the correction step with a simple formula.
-
-THe belif filter admit a solution that we can compute basic some matric moltiplication. The final belif it's also a Gaussian distribution, with mean and variance that we can compute with a simple formula. The result change the shape from the prior, but it's still a Gaussian distribution.
-
-== Extended Kalman Filter
-
-The EKF relaxes the assumption of linearity, we can have a non linear motion model and a non linear perception model.
-
-The first assumption remain, the prior belief is represented as a Gaussian distribution.But:
-
-1. The motion model it a non linear trasformation plus a Gaussian noise. $g$ its a non linear function:
+Formally, the Bayes filter consists of two steps:
 $
-  S_t = g(s_(t-1), u_t) + epsilon_t tilde N(0, r_t)
+  "Prediction:" space overline("Bel"(s_t)) & = integral mr(p(s_t | u_t, s_(t-1))) "Bel"(s_(t-1)) d s_(t-1) \
+            "Correction:" space "Bel"(s_t) & = eta dot mr(p(z_t | s_t)) space overline("Bel"(s_t))
 $
-#warning()[
-  In this case we can't model the distribution probability $p(s_t | u_t, s_(t-1))$ as a gaussian distribution, because the non linear function $g$ can change the shape of the distribution.
+The prediction step integrates over all possible previous states, while the correction step applies Bayes' rule to update the belief based on new measurements.
+
+#note()[
+  If $mr(p(s_t | u_t, s_(t-1)))$ and $mr(p(z_t|s_t))$ have arbitrary or complex forms, solving the prediction step turns out to be *analytically intractable*.
+
+  For that reason, we need to make *simplifying assumptions* about the motion and perception models to make the Bayes filter tractable.
 ]
-2. The perception model it a non linear trasformation plus a Gaussian noise. $h$ its a non linear function:
-$
-  z_t = h(s_t) + delta_t tilde N(0, q_t)
-$
 
-Singe $g$ and $h$ are non linear, the bayes filter does not admit an analytical solution. We need to *linearize* g and h around the points that we want to evaluete the function consider in the filter. In this case:
-- Linearize $g$ around $g(s_(t-1), u_t)$
-- Linearize $h$ around $h(s_t)$
+== Gaussian Filters
 
-When we linearize stuff we need to compute the derivative of the function, meaning that the math become more complex.
+This leads us to the *Gaussian filters*, which are a family of algorithms that implement the Bayes filter under specific assumptions about the noise and system dynamics.
 
-*Unicycle model*: its when we describe the motion of a robot with two wheels, we can use the EKF to estimate the pose of the robot given the control input and the mesurament.
+=== Gaussian Distributions
 
-
-#example()[
-
-  //ricontrolalre
-  If i have a differential drive robot, if we have a direction $v$ and linear velocity $w$, we need to convert $v$ and $w$ to an angular velocity for each wheel.
-
-  We suppose that robot have a gps sensor that tell the $x$ and $y$ of the robot in the plane.
-
-  Given $v$ and $w$ (the current pose) we need to compute the ideal next pose. THis is a non linear function (cosine and sine). The linear sensing model is a real pose + a noise gaussian.
-
-  In the example the sensing noise and the motion noise are represented as a matrix. Each dimension of the matrix affects a specific coordinates on the plane (x,y, $theta$).
-
-  At each temporal step an hardcoded control action will be applied to the robot. The robot go straight, go left and curve right for a certain amount of time.
-
-  in the simulation loop i compute the true coordinates of the robot (it don't know them). They are compute as the equation in the previous slide.
-
-  The robot its going to recive a the real measuremtn plut a gaussian noise (we simulate the mesurament that come from the gps sensor).
-
-  Dead reckoning: i compute the current position of the robot. It assume an ideal enviroment (no slippage) and we are not considering the gps mesurament (only the internal mesurament will be considered).
-  #note()[
-    This exstimation continue to diverge form the real position of the robot, because we are not considering the gps mesurament, and we are assuming an ideal enviroment (no slippage). The error accumulate over time, and the estimation become more and more wrong.
-  ]
-  The blue curve its what we get when we combine the dead reckoning with the gps mesurament, using the EKF. The estimation is very close to the real position of the robot, because we are considering the gps mesurament, and we are not assuming an ideal enviroment (we are considering the noise).
-
-]
+We model *noise using Gaussian* (Normal) distributions because they have unique mathematical properties:
+- $A times "Gaussian" -> "Gaussian"$
+- $"Gaussian" times "Gaussian" -> "Gaussian"$
+- Defined by just two parameters: if we represent a belief as a Gaussian, we only need *two* numbers (mean $mu$ and variance $sigma^2$) to represent the entire probability distribution over millions of possible states.
 
 #warning()[
-  The previus example show usa that we can't realay only on the internal mesurament of the robot, because the error accumulate over time. We need to combine the internal mesurament with the external mesurament, even if they are noisy, to get a good estimation of the pose of the robot.
+  $mr("Limitations")$: Gaussians are *unimodal*, meaning they can only *represent a single hypothesis* or peak. They cannot represent multimodal beliefs (multiple distinct possibilities).
 ]
-
-// Jack's notes
-
-== Likelihood fields (End-Point Sensor Models)
-
-//TODO: GRAPH NEEDS CORRECTION
-
-Unexpected obstacles are more probable to generate small sensor readings. This is because the longer the sensor beam, the larger the probability of encountering an obstacle along its path. This is why the probability distribution graph for unexpected objects initially descends (exponentially) and then suddenly drops at $z^*$.
-
-Remember that the likelihood field is a different perspective on sensor models compared to ray-casting. Instead of tracing a beam to find the exact intersection, it uses an end-point model.
-
-#informally[
-  Basically, if I measure a "hit" (a reading from a sensor like a lidar), I know that there must be an obstacle responsible for it in the environment. To explain the hit, we simply consider the closest obstacle in our map, and we give that closest obstacle the responsibility of generating the hit. So, we calculate the Euclidean distance from the hit point to the obstacles in the map and we take the closest one.
-]
-
-#example[
-  If I had a hit on the right of a mapped cube, I calculate the distances from the hit to all mapped objects. The cube will be the closest obstacle, so it is considered the responsible object for the hit.
-]
-
-Black areas in the likelihood map = no robot can have a hit in this position (e.g., inside solid obstacles).
-
-#note[
-  These probabilistic models are essential for the most common sensors used in robotics, such as laser rangefinders.
-]
-
-= Sensors
-
-== Proprioceptive sensors
-
-Robotics introspection, which basically measures values internal to the robot itself.
-
-#note(title: "Debate")[
-  Are the wheels of the robot considered part of the robot or the environment? 
-  *Yes*, they are part of the robot, so measuring their movement is proprioception.
-]
-
-=== Encoders (Odometry)
-These sensors measure the angular position and velocity of the wheels. 
-They can be optical, or use a magnet (magnetic encoders). They are used for low-level motor control and to infer the pose (position and orientation) of the robot through odometry, providing a first, albeit noisy, measurement of movement.
-
-#warning[
-  Odometry measurements should not be blindly trusted over long distances: they work assuming that there is no noise (no wheel slip, exact wheel diameter). Over time, the measurements accumulate errors and become very noisy.
-]
-
-If I just obtain the position using odometry (relying only on motion models), I keep moving while accumulating all the previous errors (a phenomenon called *dead reckoning*). Therefore, my final pose measurement will be awful and significantly drift from reality.
-
-=== Inertial Measurement Unit (IMU)
-Based on accelerometers and gyroscopes, an IMU returns linear accelerations, angular velocities, and orientation (often represented as quaternions or Euler angles). 
-They are frequently fused with encoders to mitigate dead reckoning drift (e.g., IMUs provide good rotational data where wheels might slip).
-
-=== System health diagnostics
-Monitors internal states like temperature or battery levels. Essential for power management, fault detection, and mission autonomy.
-
-== Exteroceptive sensors 
-
-Exteroceptive sensors measure information from the robot's surrounding environment.
-
-=== Sonar (Ultrasonic Sensors)
-They return the distance to the closest obstacle in a given direction using sound waves.
-They are very noisy and very inexpensive. This makes them very good for simple reactive tasks like obstacle avoidance, but not ideal for localizing complex features in the environment or building high-resolution maps.
-
-#note(title: "Kinematic Constraints")[
-  When avoiding obstacles, we must consider the robot's kinematics. A robot might be non-holonomic:
-  - *Ackermann steering*: The motion model that standard cars use. The direction is constrained (the front wheels pivot), which is why we have to do specific maneuvers (like parallel parking).
-  - *Non-holonomic robots*: Robots with kinematic constraints. The robot can theoretically reach any position in space, but it cannot move on any arbitrary trajectory (e.g., a car cannot instantly move sideways).
-  - *Holonomic robots*: By contrast, these can move instantaneously in any direction (like robots with omni-wheels).
-]
-
-=== Laser rangefinder (Lidar)
-Uses light beams to measure distances. Much more accurate and faster than sonars, but traditionally much more expensive. Excellent for mapping and localization.
-
-=== 3D Range Finders (3D Lidar)
-They are a 3D version of laser rangefinders, reading multiple beams across a solid angle. The value returned is represented by a point cloud. Very expensive, and processing the massive amount of data requires large computational power.
-
-=== GPS (Global Positioning System)
-Returns the global latitude and longitude of the robot. Works outdoors.
-The main problem is that in order to get a reliable reading, the receiver needs a clear line of sight to multiple satellites. This is not always guaranteed (e.g., robots surrounded by high buildings in "urban canyons", irregular walls, tree canopies, etc.).
-
-=== Cameras and Other Sensors
-- *Cameras (RGB)*: Provide rich visual data.
-- *Depth Cameras (RGB-D)*: Provide both an image and a depth map.
-- *Contact sensors*: Bumpers that detect physical collision with an object.
-
-= Localization and Filters
-
-== Gaussian Filters and Bayes Filter Implementation
-
-We need a continuous Bayes filter to represent the probability distribution (belief) of a robot's pose in a continuous environment.
-It tells us how to use motion models and sensing models to recursively propagate a belief state over time.
-
-To do that, we need to mathematically define such models. Specifically, we must compute the integral in the prediction step (incorporating the motion model) and apply Bayes' rule in the correction step
 
 == Kalman Filter
 
-#informally[
-  The Kalman Filter is a specific implementation of the Bayes filter. We pretend that the motion and sensing models are the simplest possible ones (linear). This is an approximation of the real world, but it gives priority to mathematical tractability. A way to elegantly solve the integral.
+The *Kalman Filter* is a Bayes filter assuming that motion and sensing models are extremely simple.
+
+#informally()[
+  We pretend that *motion* and *sensing* models are the *simplest possible* ones (linear transformations). This is an approximation of reality, but it gives us mathematical tractability—we can solve the Bayes filter integral analytically instead of numerically.
 ]
 
-=== Gaussian Distribution
-We use Gaussian (Normal) distributions to model noise. 
-Gaussians have unique mathematical properties, making them the "black hole" of distributions (due to the Central Limit Theorem). However, they have limits: they are unimodal (can only represent a single hypothesis/peak).
+For the Kalman filter to work, we make three assumptions:
 
-=== Three Key Assumptions:
+1. *Gaussian Prior*: The initial belief must be a Gaussian distribution:
+  $ "Bel"(x_0) tilde cal(N)(mu_0, sigma_0^2) $
+  We cannot choose an arbitrary prior shape, but we can choose its parameters (mean and variance). If the initial state is completely unknown, we use a very wide Gaussian (large variance). If it's precisely known, we use a narrow Gaussian.
 
-1. *Gaussian Prior*: My initial belief must be a Gaussian. I cannot choose an arbitrary shape for the prior, but I can choose its mean and variance: 
-   $ "Bel"(x_0) tilde cal(N)(mu_0, Sigma_0) $
-   If the initial state is totally unknown, I will choose a very wide Gaussian distribution (huge variance). If the initial state is perfectly known, I use a very narrow Gaussian.
+2. *Linear Motion Model + Gaussian Noise*: The pose transitions linearly:
+  $
+    s_t = A_t s_(t-1) + B_t u_t + epsilon_t, quad epsilon_t tilde cal(N)(0, r_t) \
+    p(s_t | u_t, s_(t-1)) = 1 / (sqrt(2 pi r_t)) e^(- (s_t - mr((A_t s_(t-1) + B_t u_t)))^2 / (2 r_t))
+  $
+  where $A_t$ and $B_t$ are transition matrices.
+  #note()[
+    This is a *strong assumption*: real robot kinematics are almost always non-linear.
+  ]
 
-2. *Linear Motion Model + Gaussian Noise*: The transition from the previous pose to the next pose $x_t$ is a linear transformation plus some added noise. We replace complex kinematics with the simplest function: a line.
+3. *Linear Perception Model + Gaussian Noise*: Measurements relate linearly to the state:
+  $
+    z_t = C_t s_t + delta_t, quad delta_t tilde cal(N)(0, q_t) \
+    p(z_t | s_t) = 1 / (sqrt(2 pi q_t)) e^(- mb((z_t - C_t s_t))^2 / (2 q_t))
+  $
+  where $C_t$ is the measurement matrix.
 
-3. *Linear Perception Model + Gaussian Noise*: The measurement $z_t$ is a linear transformation of the state plus Gaussian noise. In reality, this is rarely true, but we assume it to simplify things.
+  #note()[
+    This is also a strong assumption: real sensor models are typically non-linear.
+  ]
 
-*Conclusion*: With these three assumptions, the Bayes filter integral can be solved analytically. Prediction and correction steps become simple linear algebra (matrix multiplications), and the output belief is *always* strictly a Gaussian. We preserve the shape of the probability function forever.
+With these assumptions, the Bayes filter integral becomes analytically tractable. The prediction and correction steps reduce to simple linear algebra (matrix multiplications). We get:
+
+- *Input*: $"Bel"(s_(t-1)) = (mu_(t-1), sigma^2_(t-1), u_t, z_t)$
+- *Output*: $"Bel"(s_t) = (mu_t, sigma^2_t)$
+
+#note()[
+  *The output belief is always strictly Gaussian.* We preserve the distribution's shape throughout the filtering process.
+]
+
+The main $mg("advantage")$ of the Kalman filter is that it provides a simple implementation of the Bayes filter (only matrix multiplications).\
+The main $mr("disadvantage")$ is that the *assumptions are often unrealistic* for real-world robotics applications, which motivates the need for more advanced filters like the Extended Kalman Filter (EKF).
 
 == Extended Kalman Filter (EKF)
 
-The EKF is historically one of the most used systems for localization in robotics.
+The Extended Kalman Filter *addresses* the main limitation of the standard Kalman Filter: the *linearity assumption*.
 
 #warning[
-  The problem with the standard Kalman Filter was the linearity assumption. In the real world, robot kinematics and sensor geometries are *almost never* linear!
+  In the real world, robot kinematics and sensor geometries are *almost never* linear. This makes the standard Kalman Filter's assumptions unrealistic for most practical applications.
 ]
 
-The Motion model is a non-linear transformation: instead of having linear matrices, we replace that part with a non-linear function $g$. 
+=== Relaxing Linearity
 
-Because the functions are non-linear, pushing a Gaussian through them would distort its shape—we wouldn't know how the conditional probability is shaped, and it probably wouldn't be a Gaussian anymore.
+The EKF keeps the three-part assumption structure but replaces the linear functions with non-linear ones:
 
-#informally[
-  *What do we do when we have something that is not linear? We linearize it.* \
-  Consider the non-linear function $g$. We linearize it locally around the current mean point (our best estimate) of the filter. 
+1. *Non-linear Motion Model*: The motion model is a non-linear transformation plus a Gaussian noise term:
+  $
+    s_t = mr(g(s_(t-1), u_t)) + epsilon_t, quad epsilon_t tilde cal(N)(0, r_t)
+  $
+  where *$g$* is a non-linear function.
+
+2. *Non-linear Perception Model*:
+  $
+    z_t = mb(h(s_t)) + delta_t, quad delta_t tilde cal(N)(0, q_t)
+  $
+  where *$h$* is a non-linear function.
+
+#warning()[
+  The problem is that pushing a Gaussian distribution through a non-linear function *distorts its shape*. The *result* is generally *not Gaussian*, so we cannot apply standard Kalman filter equations directly.
 ]
 
-This is called linearization, and it is achieved using a first-order Taylor expansion. To do this, I need to compute the derivatives of the functions with respect to the state variables. These matrices of partial derivatives are called *Jacobians*.
+To solve this problem, we *linearize* the non-linear functions locally around our current best estimate (the current mean of the filter). We linearize $g$ around $mr(g(s_(t-1), u_t))$ and $h$ around $mb(h(s_t))$.
 
-In short: the EKF pretends that the world is linear, but only locally in a small region around the robot's current estimated position.
-
-#example(title: "Unicycle Model Example")[
-  A common non-linear motion model is the Unicycle model, described by a linear velocity $v$ and an angular velocity $omega$. It is called this because it behaves like a circus unicycle. This introduces trigonometric functions (sine and cosine), making the model strictly non-linear.
+#informally()[
+  The key insight: *We pretend the world is linear, but only in a small region around where the robot currently is.*
 ]
 
-I cannot rely only on the motion model (as seen in the demo example, dead reckoning causes the uncertainty to grow to infinity). The EKF prediction step uses the unicycle model to move the belief, but we absolutely need the correction step (using exteroceptive sensors) to shrink the uncertainty back down.
+We use first-order Taylor expansion to compute the linear approximation. This requires computing derivatives of the functions with respect to state variables. The resulting matrices of partial derivatives are called *Jacobians*.
+
+#align(center)[
+  #image("/assets/KalmanFilter.png", width: 50%)
+]
+
+As we can see from the figure:
+- *Bottom-Right Panel* $p(x)$: Displays the initial state estimation. It shows a shaded Gaussian probability density function centered around a mean $mu$ (marked with an "x"). This represents the input uncertainty.
+
+- *Top-Right Panel* $y = g(x)$: Illustrates the transformation space mapping the input to the output.
+  - The solid black curve represents the true, non-linear system or observation model, $g(x)$.
+  - The dashed straight line is the *Taylor approximation*, representing the linearization of $g(x)$ tangent at the specific point of the estimated mean $mu$.
+
+- *Top-Left Panel* $p(y)$: Shows the resulting probability distributions mapped onto the y-axis.
+  - The *shaded, irregularly shaped area* represents the true probability density, $p(y)$. Because the function $g(x)$ is non-linear, this true output is geometrically distorted and is no longer a Gaussian bell shape.
+  - The *dashed Gaussian curve* represents the EKF approximation. By mathematically passing the input through the linear Taylor approximation instead of the actual non-linear curve, the EKF forces the output to remain a perfect, manageable Gaussian.
+
+The diagram visually highlights the fundamental compromise of the EKF:
+- $mg("pros")$: It simplifies complex, non-linear realities into manageable Gaussian models by linearizing around the current estimate.
+- $mr("cons")$: Introduces an *approximation error*, which is clearly visible as the geometric discrepancy between the exact shaded distribution and the dashed EKF Gaussian.
+
+#example()[
+  This example aims to show the *Dead Reckoning Problem*: if we rely only on the motion model, uncertainty grows over time, and our pose estimate diverges from reality. The EKF prediction step uses the motion model to move the belief forward, but we absolutely need the *correction step* with exteroceptive sensors (e.g., GPS, Lidar) to reduce uncertainty back down.
+
+  *Demonstration scenario*:
+  - Robot: Differential drive with wheel encoders and GPS sensor.
+  - We apply a sequence of control actions: go straight, turn left, curve right.
+  - The velocity model is non-linear (e.g., due to wheel slip, non-ideal kinematics), and the GPS measurements are noisy. To avoid the non-linearity of the velocity model, we use the EKF to linearize it around the current estimate.
+
+  *Dead reckoning alone* (black line): The pose estimate continuously diverges from the $mg("true position")$ because we only use the motion model and ignore the GPS measurements.
+
+  *EKF with GPS fusion* ($mb("blue")$ line): By combining the wheel encoders (motion model) with $mr("GPS")$ measurements (correction), the EKF estimate stays very close to the true position. The sensor noise is handled appropriately, and the estimate remains reliable.
+
+  #align(center)[
+    #image("/assets/KalmanExample.png", width: 90%)
+  ]
+]
+
+== Particle Filter
+
+Particle filters are a *non-parametric* approach: instead of representing the posterior as a parametric distribution (like a Gaussian), we represent it as a set of discrete samples (*particles*). Particles are a set of random state samples from the posterior distribution, each with an associated weight representing its importance:
+$
+  {s_t^1,s_t^2, dots, s_t^n} tilde p(s_t | z_(1:t), u_(0:t))
+$
+
+Their main $mg("advantage")$ is that they can represent *arbitrary distributions*, including multimodal ones, without making strong assumptions about the underlying noise or system dynamics.
+
+Pseudocode for the particle filter algorithm:
+#pseudocode(
+  [*for* $i in {1,dots,n}$],
+  indent(
+    [$s_t^i <- "Sample"(p(s_t | s_(t-1), u_t))$ sample from the motion model],
+    [Compute the importance weight: $s_t^i : w_t^i = p(z_t | s_t^i)$],
+    [Add $<s_t^i, w_t^i>$ to the particle set],
+  ),
+  [Perform importance resampling: $s_t^i$ is selected with probability proportional to $w_t^i$],
+)
+
+By analyzing its steps:
+1. *Sample*: We generate new particles by sampling from the motion model distribution, which predicts how the state evolves based on the previous state and control input.
+
+2. *Weight*: For each particle, we compute an *importance weight* $w_t^i$ based on how well the predicted state explains the new measurement. This is done by evaluating the likelihood of the measurement given the particle's state $p(z_t | s_t^i)$.
+
+3. *Resample*: We perform importance resampling to focus on the most likely particles. Particles with higher weights are more likely to be selected for the next iteration, while those with low weights may be discarded.
+
+The final result is a new set of particles that approximates the posterior distribution after incorporating the latest measurement.
