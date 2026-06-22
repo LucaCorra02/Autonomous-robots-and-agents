@@ -16,7 +16,7 @@ However, in reality, a planning layer must reason about *how* to physically move
 Therefore, we need to lower the level of abstraction and incorporate into the planning problem the lower-level aspects that actually determine the robot's *motion*.
 
 #figure(
-  image("/assets/motion_planning.png", width: 60%),
+  image("/assets/motion_planning.png", width: 50%),
   caption: [Motion Planning: From abstract graph topology to continuous space]
 )
 
@@ -78,7 +78,7 @@ The trajectory $tau$ must respect both:
 2. *Kinematic/Dynamic constraints*: complying with higher-order non-holonomic constraints of the form $u(q)dot(q) = 0$, which constrain the velocity of the trajectory without reducing the $cal(C)$-space dimension.
 
 #figure(
-  image("/assets/workspace_vs_configuration_space.png", width: 100%),
+  image("/assets/workspace_vs_configuration_space.png", width: 80%),
   caption: [Execution in Workspace vs C-Space trajectory]
 )
 
@@ -97,7 +97,7 @@ For a Roadmap to be useful, these three properties must hold:
 3. *Connectivity*: The underlying graph is connected.
 
 #figure(
-  image("/assets/roadmap.png", width: 80%),
+  image("/assets/roadmap.png", width: 50%),
   caption: [Roadmap representation in C-Space]
 )
 
@@ -149,6 +149,6 @@ RRTs are *single-query* planners that incrementally grow a tree rooted at the st
 RRTs are particularly good at exploring high-dimensional spaces quickly due to their *Voronoi bias* (they naturally tend to pull towards large, unvisited areas of the state space).
 
 #figure(
-  image("/assets/3D_graph.png", width: 80%),
+  image("/assets/3D_graph.png", width: 60%),
   caption: [Rapidly-exploring Random Trees (RRT)]
 )
