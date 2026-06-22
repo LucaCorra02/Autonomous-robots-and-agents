@@ -80,7 +80,12 @@ Suppose that we have a point $p = mat(p_x; p_y; p_z)$ and a rotation represented
 $  p = mr(0) + p_x i + p_y j + p_z k $
 
 - *Rotation*: now that we have converted the point, we can apply the rotation to it. This operation is called the *sandwich product* (the point is surrounded by $q$ and its conjugate):
-$  p' = mr(q) p mr(q^*) $
+  $  p' = mr(q) p mr(q^*) $
+
+  #note()[
+    That's why we *can't use the angle $theta$* as it is. If we use $theta$ directly, we would be rotating the point by $2 theta$ instead of $theta$. The angle is halved to account for the sandwich product.
+  ]
+
 
 - Finally, we can extract the coordinates of the rotated point $p'$ from the resulting quaternion, because the real part remains $0$:
 $  p' = mat(p'_x; p'_y; p'_z) $
@@ -105,7 +110,7 @@ In the quaternion world, the *composition* of two rotations is just the multipli
 
 Quaternions are very useful in robotics because they allow us to represent rotations in a compact way and also for sending them over networks. With a rotation matrix we need to send $9$ numbers, while with a quaternion we only need to send $4$ numbers. This is a huge saving of bandwidth, and they are excellent for interpolation.
 
-Suppose that we need to *rotate an object* from an initial position $R_1$ to a final position $R_2$. We know the description of the initial and final rotation, but we still have to go through the intermediate rotations; we have to compute a path.
+Suppose that we need to *rotate an object* from an initial position $R_1$ to a final position $R_2$. We know the description of the initial and final rotation, but we still have to go through the intermediate rotations; we have to *compute a path between $R_1$ and $R_2$*.
 
 Suppose that we use three angles (*Euler angles*) to represent the rotation. I can describe the transition using *linear interpolation*:
 $  v_alpha = v_i + alpha(v_f - v_i), alpha in [0,1] $
@@ -454,7 +459,7 @@ In this image, what is the transformation of $G$ with respect to $H$?
 
   *Inverse problem*: given $""^A_B T$ how we can obtain $""^B_A T$, where $""^B_A T$ is such that $""^A_B T space ""^B_A T = I$? We can use the inverse of the transformation matrix:
 $
-  ""B_A T = mat(
+  ""^B_A T = mat(
     ""^B_A R^T, -""^B_A R^T space ""^A 0';
     0, 1;
   )
