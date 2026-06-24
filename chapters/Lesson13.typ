@@ -11,7 +11,7 @@ A robot's software must be abstracted at different levels of abstraction:
 This is why *ROS2* (Robot Operating System 2) exists: it provides a *middleware layer* that abstracts away hardware differences and provides *standardized communication patterns* between software components.
 
 #note()[
-  ROS2 is *not an operating system* its a middleware that runs on top of an operating system (Linux, Windows, macOS). It provides a set of tools and libraries to facilitate the development of robotic applications, but it relies on the underlying OS for low level functionalities.
+  ROS2 is *not an operating system*. It is a middleware that runs on top of an operating system (Linux, Windows, macOS). It provides a set of tools and libraries to facilitate the development of robotic applications, but it relies on the underlying OS for low-level functionalities.
 ]
 
 == ROS Software Architecture
@@ -32,7 +32,7 @@ Nodes *run concurrently* and are *language-agnostic*. In resource-constrained ro
 Nodes interact through *interfaces*, which are *formal specifications of communication rules*. An interface is like a contract ensuring that nodes agree on the structure and type of data being exchanged.
 
 #note()[
-  Interfaces are defined using a language-agnostic *Interface Definition Language (IDL)*, which allows nodes written in different languages (C++, Python, etc.).
+  Interfaces are defined using a language-agnostic *Interface Definition Language (IDL)*, which allows nodes written in different languages (C++, Python, etc.) to communicate.
 ]
 
 == ROS Interfaces Overview
@@ -46,13 +46,13 @@ Messages define a simple data structure for one-way, *asynchronous* input/output
 - Ideal for continuous streams of data (sensor readings, robot state)
 - Example topics: `/scan` (LIDAR scans), `/cmd_vel` (velocity commands), `/camera/image_raw` (camera images)
 
-Suppose that we want to exchange the linear velocity $v$ and angular velocity $theta$ of a robot. The comunication follow this pattern:
+Suppose that we want to exchange the linear velocity $v$ and angular velocity $theta$ of a robot. The communication follows this pattern:
 
 - We have a $mr("publisher")$ that publishes the velocity commands. It *doesn't know* if there is a node that *receives* these commands. It just publishes them.
 
-- All the nodes that want to receive these commands, *subscribe to the publisher*. When they wake up, they will receive the velocity commands and execute them.
+- All the nodes that want to receive these commands *subscribe to the publisher*. When they wake up, they will receive the velocity commands and execute them.
 
-- We also have a $mp("Topic")$: is a *unidirectional channel* over which data are communicated. One topic is *associated with a specific type of message*. A node can publish messages to a topic or subscribe to a topic to receive messages.
+- We also have a $mp("Topic")$: this is a *unidirectional channel* over which data is communicated. One topic is *associated with a specific type of message*. A node can publish messages to a topic or subscribe to a topic to receive messages.
 
 This pattern has three key properties:
 - *Asynchronous*: the *publisher doesn't have to wait/check* if the other node is ready to receive the message; it just publishes and moves on. The subscriber will receive the message when it is ready.
@@ -62,55 +62,54 @@ This pattern has three key properties:
 - *Many to many*: communication can be $1:1$, $1:N$, $N:1$, or $N:N$.
 
 #note()[
-  The angular velocity is usually represented by three numbers (one for each axis). It can be represented as a quaternion, but when humans are involved, this representation is better because it is more intuitive. Quaternions are more suitable for computer calculations.
+  The angular velocity is usually represented by three numbers (one for each axis). It can be represented as a quaternion, but when humans are involved, Euler angles are better because they are more intuitive. Quaternions are more suitable for computer calculations.
 ]
-
 
 #example()[
   *Lidar and odometry*
   - Topic `/scan`: The LIDAR driver publishes range scans at a given frequency (e.g., 5 Hz)
-  - Multiple nodes (SLAM, Localization, mapping, visualization) might receive and consume these data
+  - Multiple nodes (SLAM, Localization, mapping, visualization) might receive and consume this data
 
   *Teleoperation*
   - Topic `/cmd_vel`: A teleoperation node publishes velocity commands $(v, theta)$ reading the user's input
   - A controller node computes angular velocities for each wheel and sends control actions to the motors
 ]
 
-*QoS (Quality of Service)*: It defined that the delivery process by some parametes. The most important are:
+*QoS (Quality of Service)*: It defines the delivery process using some parameters. The most important are:
 
 - *Reliability*: it can be:
   - *`Best effort`*: the message can be lost
-  - *`Reliable`*: the system will try to deliver the message until it is delivered
+  - *`Reliable`*: the system will try to deliver the message until it is successfully received
 
 - *Durability*: Nodes are asynchronous and can join/leave at any time. Suppose we have a late-joining subscriber; should we deliver old messages to it? If the publisher is `volatile`, the message is lost.
   - *`Volatile`*: no attempt is made to persist samples
   - *`Transient local`*: the publisher becomes responsible for persisting samples for late-joining subscriptions
 
 #warning()[
-  *QoS Compatibility*: Not all the parameters configuration are compatible.
+  *QoS Compatibility*: Not all parameter configurations are compatible.
 
-  The subscriber *should not demand* a higher quality than the one provided by the publisher. If the publisher is `Best Effort` and the subscriber is `Reliable`, they are not compatible. Similarly, if the publisher is `Volatile` and the subscriber is `Transient` Local, they are incompatible.
+  The subscriber *should not demand* a higher quality than the one provided by the publisher. If the publisher is `Best Effort` and the subscriber is `Reliable`, they are not compatible. Similarly, if the publisher is `Volatile` and the subscriber is `Transient Local`, they are incompatible.
 ]
 
 === Services (.srv)
 
-Services are used for short-running request/response interactions. Unlike pub/sub, *they are synchronous*: the client waits for a response:
+Services are used for short-running request/response interactions. While they conceptually act like synchronous calls (where the client waits for a response), *in ROS2 they are actually implemented asynchronously* using futures under the hood, meaning the node's thread doesn't completely block:
 - Two message definitions: the request sent by the client and the response returned by the server
 - Suitable for simple queries or configuration requests
 
 #example()[
   *Navigation stack's maps*
   - Service `GetCostmap`: retrieves the entire costmap as an occupancy grid, allowing external nodes (e.g., task planners) to do planning on it
-  - Service `IsPathValid`: given a path (sequence of poses), evaluates it against the current costmap and returns whether the trajectory is valid or would collide with obstacles. It also returns the index of poses that failed validation (collision points), enabling the path planner to find better paths
+  - Service `IsPathValid`: given a path (sequence of poses), evaluates it against the current costmap and returns whether the trajectory is valid or would collide with obstacles. It also returns the indices of poses that failed validation (collision points), enabling the path planner to find better paths
 
   #note()[
-    Both services are quick computational geometry operations; they don't require interaction with the physical world.
+    Both services are quick computational geometry operations; they don't require physical interaction with the world.
   ]
 ]
 
 === Actions (.action)
 
-Actions are used for *long-running, asynchronous request/response interactions* with intermediate feedback, progress reports, and the possibility of preemption. They are suitable for complex tasks that take time and need monitoring
+Actions are used for *long-running, asynchronous request/response interactions* with intermediate feedback, progress reports, and the possibility of preemption. They are suitable for complex tasks that take time and need monitoring.
 
 *Action Workflow*:
 - *Sending the goal*: The action client sends a `goal` (e.g., "go to pose $X$") to the action server. The server immediately sends an acknowledgement via a service call.
@@ -124,7 +123,6 @@ Actions are used for *long-running, asynchronous request/response interactions* 
   - Action `FollowPath`: executes a path (sequence of poses) using a specified controller with progress monitoring
   - Feedback includes: `tracking_error`, `current_path_index`, `robot_pose`, `distance_to_goal`, `speed`, `remaining_path_length`
 ]
-
 
 == Node Workflow
 
@@ -140,7 +138,7 @@ Nodes can execute in two different ways:
 
 == Managed Lifecycles
 
-In complex robotic systems, simply *launching nodes is not sufficient*. ROS2 introduces managed lifecycles to ensure reliable bringup and shutdown.
+In complex robotic systems, simply *launching nodes is not sufficient*. ROS2 introduces managed lifecycles to ensure reliable bring-up and shutdown.
 
 Each node transitions through deterministic states:
 - *`Unconfigured`*: the node is created but not initialized. It can't do anything.
@@ -149,9 +147,9 @@ Each node transitions through deterministic states:
 - *`Finalized`*: the node is shutting down.
 
 Advantages:
-- *Reliable bringup*: Critical dependencies, hardware interfaces, and communication channels are fully initialized before the node starts processing
-- *Runtime supervision*: A supervisor can pause, reset, or restart individual nodes without restarting the entire ROS graph
-- *Error recovery*: If a node fails, it can safely transition to Inactive or Unconfigured to prevent strange behavior
+- *Reliable bring-up*: Critical dependencies, hardware interfaces, and communication channels are fully initialized before the node starts processing.
+- *Runtime supervision*: A supervisor can pause, reset, or restart individual nodes without restarting the entire ROS graph.
+- *Error recovery*: If a node fails, it can safely transition to Inactive or Unconfigured to prevent strange behavior.
 
 == TF Subsystem (TF2)
 
@@ -160,22 +158,22 @@ ROS provides a unified approach to *manage all frames of reference* that compose
 A frame is a coordinate system attached to a specific part of the robot or the environment. Transforms describe the spatial relationship (position and orientation) between two frames.
 
 TF2 uses *homogeneous coordinates* and *transformation matrices* to compute relations between frames and points. It:
-- Receives updates about transforms and keeps tracks of them
+- Receives updates about transforms and keeps track of them
 - Maintains a history of transforms (important for timestamped sensor data)
 - Follows standard conventions: right-handed, with angles growing counter-clockwise (0 = forward, $pi/2$ = left, $pi$ = backward, $-pi/2$ = right)
 
 TF2 works with two main *topics*:
-- *`/tf`*: *dynamic transforms* that change over time (e.g., robot joints, actuators). They have high volatility, they expire if not refreshed after a given time.
+- *`/tf`*: *dynamic transforms* that change over time (e.g., robot joints, actuators). They have high volatility, and they expire if not refreshed after a given time.
 
 - *`/tf_static`*: *transforms* that stay *fixed over time* (e.g., rigidly attached components like the laser relative to the robot's base). They don't expire and are published under a transient local QoS.
 
 All known transforms are organized in a *TF tree* structure.
 
 #figure(
-  image("/assets/Tf-tree.png", width: 80%),
+  image("/assets/Tf-tree.png", width: 100%),
   caption: [TF tree structure for a differential drive robot with a LIDAR and an IMU],
 )
-The image shows this tree scructure:
+The image shows this tree structure:
 - `odom` (root): odometry frame
   - `base_footprint`: base of the robot
     - `base_link`: main body of the robot
@@ -217,18 +215,18 @@ There are four types of nodes in a behavior tree:
 - *`Control nodes`*: have one or more children and forward the tick according to specific logic patterns.
 - *`Decorator nodes`*: control nodes with just one child that modify the child's behavior or return value.
 - *`Action nodes`*: leaf nodes that trigger the execution of tasks (e.g., navigate to a goal, grasp an object). They can return $mg("Success")$, $mr("Failure")$, or $mo("Running")$.
-- *`Condition nodes`*: action nodes that *inspect the environment* or system state *and immediately return* $mg("Success")$, $mr("Failure")$, *never* $mo("Running")$. They check the validity of given conditions.
+- *`Condition nodes`*: action nodes that *inspect the environment* or system state *and immediately return* $mg("Success")$ or $mr("Failure")$, but *never* $mo("Running")$. They check the validity of given conditions.
 
 *Control nodes* determine *how ticks are propagated to their children*. The most common control nodes are:
 
 - *SEQUENCE*: executes children from *left to right* (like an AND gate)
   - If a child returns $mg("Success")$, immediately tick the next child
-  - If a child returns $mr("Failure")$, stop and return $mr("Failure")$ to parent (canceling subsequent steps)
+  - If a child returns $mr("Failure")$, stop and return $mr("Failure")$ to the parent (canceling subsequent steps)
   - If a child returns $mo("Running")$, return $mo("Running")$ and stay on that node
 
 - *FALLBACK*: executes children from *left to right until one succeeds* (like an OR gate)
   - If a child returns $mr("Failure")$, immediately move to the next child
-  - If a child returns $mg("Success")$, stop and return $mg("Success")$ to parent
+  - If a child returns $mg("Success")$, stop and return $mg("Success")$ to the parent
   - If a child returns $mo("Running")$, return $mo("Running")$ and stay on that node
 
 - *PARALLEL*: executes all children concurrently
@@ -241,12 +239,6 @@ There are four types of nodes in a behavior tree:
 
 Behavior trees are *represented in structured text formats*: XML, JSON, or YAML.
 
-BTs are a viable formalism because they can be easily verified from a syntactic point of view (we can only use the compilaer and see if it compile). However, the main challenge is *semantic correctness*: generated trees (e.g., from LLM prompts) might compile syntactically but have incorrect logic with respect to the original specification.
+BTs are a viable formalism because they can be easily verified from a syntactic point of view (we can simply use the compiler and see if they compile). However, the main challenge is *semantic correctness*: generated trees (e.g., from LLM prompts) might compile syntactically but have incorrect logic with respect to the original specification.
 
 The advantage of using *LLMs to generate behavior trees* is that users can specify high-level goals/tasks in natural language, and the system generates the corresponding XML/JSON tree structure.
-
-
-
-
-
-
